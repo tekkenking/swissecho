@@ -1,0 +1,33 @@
+{
+    "name": "tekkenking/swissecho",
+    "description": "A multigateway laravel SMS notification channel package",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Tekkenking\\Swissecho\\": "src/"
+        },
+        "files": [
+            "src/SwissechoHelpers.php"
+        ]
+    },
+    "authors": [
+        {
+            "name": "Temitayo",
+            "email": "bucketcodes@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.1"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Tekkenking\\Swissecho\\SwissechoServiceProvider"
+            ],
+            "aliases": {
+                "Swissecho": "Tekkenking\\Swissecho\\SwissechoFacade"
+            }
+        }
+    }
+}
