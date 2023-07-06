@@ -45,7 +45,7 @@ abstract class BaseGateway
 
         //For the sms class
         $this->to = $this->payload['to'];
-        $this->sender = $this->payload['sender'];
+        $this->sender = isset($this->payload['sender']) ?: $this->config['sender'];
         $this->body = $this->payload['message'];
         $this->config   = $gateway_config;
     }
