@@ -5,8 +5,13 @@ declare(strict_types=1);
 namespace Tekkenking\Swissecho\Routes;
 
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
-abstract class BaseRoute
+abstract class BaseRoute implements BaseRouteInterface
 {
     /**
      * @var  array
@@ -32,6 +37,8 @@ abstract class BaseRoute
      * @var array
      */
     private array $gatewayConfig;
+
+    protected $mockedNotifiable;
 
     /**
      * @return void
@@ -115,7 +122,6 @@ abstract class BaseRoute
      */
     public function bootByNotification($notifiable, Notification $notification): void
     {
-
         $this->send($notifiable, $notification);
     }
 
@@ -133,9 +139,87 @@ abstract class BaseRoute
         $this->directSend($routeBuilder);
     }
 
+    public function setMockedNotifiable($mocked)
+    {
+        $this->mockedNotifiable = $mocked;
+    }
+
 
     abstract public function send($notifiable, Notification $notification): static;
 
     abstract public function directSend($routeBuilder): static;
+
+    private function mockBuildInfo($gatewayConfig, $msgBuilder)
+    {
+        $build = '';
+        if(App::environment('local')) {
+            //dump($msgBuilder);
+            //dd($gatewayConfig);
+            $build  = "From: ". $msgBuilder->from."\n";
+            $build .= "To: ". $msgBuilder->to."\n";
+            $build .= "Message: ". $msgBuilder->message . "\n";
+            $build .= "============================================\n";
+            $build .= "BUILD INFO: (Not included in the actual BODY):\n";
+            $build .= "============================================\n";
+            $build .= "Country (for sms route): ". $msgBuilder->place ."\n";
+            $build .= "Route: ". $this->config['route'] ."\n";
+            $build .= "Gateway: ". $msgBuilder->gateway ."\n";
+            $build .= "Gateway Class: ". $gatewayConfig['class'] ."\n";
+        }
+
+        return $build;
+    }
+
+    public function mockSend($gatewayConfig, $msgBuilder)
+    {
+        $buildMock = $this->mockBuildInfo($gatewayConfig, $msgBuilder);
+        $mockMethod = 'mockBy'.Str::studly($this->config['fake']);
+
+        if($buildMock) {
+            $this->$mockMethod($buildMock, $gatewayConfig, $msgBuilder);
+        }
+    }
+
+    public function mockByMail($buildMock, $gatewayConfig, $msgBuilder)
+    {
+        Mail::raw($buildMock, function($message) use ($msgBuilder) {
+            $message->to([
+                $this->config['fake_mail']
+            ])->subject('Mock: ['.$msgBuilder->to.']');
+        });
+    }
+
+    public function mockByLog($buildMock, $gatewayConfig, $msgBuilder)
+    {
+        $this->_prepareLogFile();
+        Log::channel('swissecho_mock')
+            ->info("Mock: [".$msgBuilder->to."] \n".$buildMock. "\n");
+    }
+
+    /*
+     * @return void
+     */
+    private function _prepareLogFile(): void
+    {
+        $hasLogFile = config('logging.channels.swissecho_mock', null);
+
+        if(!$hasLogFile) {
+
+            $existingConfig = config('logging.channels');
+            $existingConfig['swissecho_mock'] =  [
+                'driver' => 'single',
+                'path' => storage_path('logs/swissecho_mock.log'),
+                'level' => 'debug',
+            ];
+
+            config(['logging.channels' => $existingConfig]);
+        }
+
+        $file = config('logging.channels.swissecho_mock.path');
+        if(!File::exists($file)) {
+            File::put($file, '');
+        }
+
+    }
 
 }

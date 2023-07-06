@@ -3,6 +3,7 @@
 namespace Tekkenking\Swissecho\Routes\Sms;
 
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 use Tekkenking\Swissecho\Routes\BaseRoute;
 use Tekkenking\Swissecho\SwissechoException;
 
@@ -21,7 +22,7 @@ class SmsRoute extends BaseRoute
         $this->msgBuilder = $notification->viaSms($notifiable);
         $this->msgBuilder->to($this->prepareTo($notifiable));
         $this->msgBuilder->sender($this->prepareSender($notifiable));
-        $this->pushToGateway();
+        $this->pushToGateway($notifiable);
         return $this;
     }
 
@@ -34,7 +35,7 @@ class SmsRoute extends BaseRoute
     {
         $this->msgBuilder = $routeBuilder;
         $this->msgBuilder->sender($this->prepareSender());
-        $this->pushToGateway();
+        $this->pushToGateway($this->mockedNotifiable);
         return $this;
     }
 
@@ -84,17 +85,41 @@ class SmsRoute extends BaseRoute
         return $this->msgBuilder->sender;
     }
 
-    protected function pushToGateway()
+    protected function pushToGateway($notifiable = null)
     {
         if(!$this->msgBuilder->to) {
             throw new SwissechoException('Notification: Invalid sms phone number');
         }
 
         $gatewayConfig = $this->gatewayConfig();
-        $gatewayClass = $gatewayConfig['class'];
-        (new $gatewayClass($gatewayConfig, $this->msgBuilder->get()))->boot();
+        $this->msgBuilder->gateway = $this->gateway;
+
+        if($notifiable && method_exists($notifiable, 'routeNotificationSmsCountry')) {
+            $place = strtolower($notifiable->routeNotificationSmsCountry($notifiable));
+
+            if($place) {
+                if(isset($this->config['routes_options']['sms']['places'][$place])) {
+                    $gatewayFromPlace = $this->config['routes_options']['sms']['places'][$place];
+
+                    //Load the gateway by place
+                    $gatewayConfig = $this->config['routes_options']['sms']['gateway_options'][$gatewayFromPlace];
+
+                    $this->msgBuilder->place = $place;
+                    $this->msgBuilder->gateway = $gatewayFromPlace;
+                }else {
+                    Log::alert('SMSECHO: SMS place does not exist: '.$place, []);
+                }
+
+            }
+        }
+
+        if($this->config['live'] == false) {
+            $this->mockSend($gatewayConfig, $this->msgBuilder);
+        } else {
+            $gatewayClass = $gatewayConfig['class'];
+            (new $gatewayClass($gatewayConfig, $this->msgBuilder->get()))->boot();
+        }
 
     }
-
 
 }

@@ -3,6 +3,7 @@
 namespace Tekkenking\Swissecho;
 
 use Illuminate\Notifications\Notification;
+use Tekkenking\Swissecho\Routes\BaseRoute;
 
 /**
  *  $sw->route('sms')
@@ -26,7 +27,7 @@ class Swissecho
      */
     private array $vias = ['sms', 'slack', 'whatsapp'];
 
-    private $initRoute;
+    private BaseRoute $initRoute;
 
     private $isCallBack = false;
 
@@ -42,6 +43,7 @@ class Swissecho
     public $to;
 
     public $sender;
+    private $mockedNotifiable = null;
 
 
     /**
@@ -160,10 +162,10 @@ class Swissecho
     }
 
     /**
-     * @return mixed
+     * @return void
      * @throws SwissechoException
      */
-    public function go(): mixed
+    public function go(): void
     {
 
         //checking if initRoute is already initiated
@@ -193,9 +195,13 @@ class Swissecho
                 $this->echoBuilderMessage->sender($this->sender);
             }
 
-            return $prepped->bootByDirect($this->echoBuilderMessage);
+            if($this->mockedNotifiable) {
+                $prepped->setMockedNotifiable($this->mockedNotifiable);
+            }
+
+            $prepped->bootByDirect($this->echoBuilderMessage);
         } else {
-            return $prepped->bootByNotification($this->notifiable, $this->notification);
+            $prepped->bootByNotification($this->notifiable, $this->notification);
         }
 
     }
@@ -236,11 +242,24 @@ class Swissecho
         return $this;
     }
 
+    /**
+     * @param $sender
+     * @return Swissecho
+     */
     public function sender($sender)
     {
         $this->sender = $sender;
         return $this;
     }
 
+    /**
+     * @param $notifiable
+     * @return Swissecho
+     */
+    public function mockNotifiable($notifiable)
+    {
+        $this->mockedNotifiable = $notifiable;
+        return $this;
+    }
 
 }

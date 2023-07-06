@@ -66,10 +66,10 @@ abstract class BaseGateway
      */
     public function boot(): void
     {
-        dump($this->init());
+        //dump($this->init());
         $ch = $this->send($this->init());
         $this->execCurl($ch);
-        dd($this->getServerResponse());
+        //dd($this->getServerResponse());
     }
 
     /**
@@ -81,12 +81,32 @@ abstract class BaseGateway
 
     /**
      * @param $ch
+     * @return mixed
+     */
+    protected function hookBeforeExecCurl($ch)
+    {
+        return $ch;
+    }
+
+    /**
+     * @param $output
+     * @return mixed
+     */
+    protected function hookAfterExecCurl($output): mixed
+    {
+        return $output;
+    }
+
+    /**
+     * @param $ch
      * @return array|bool|string|void
      */
     protected function execCurl($ch)
     {
         try {
             //get response
+            $ch = $this->hookBeforeExecCurl($ch);
+
             $output = curl_exec($ch);
 
             //Print error if any
@@ -97,6 +117,8 @@ abstract class BaseGateway
                 $errorMessage = curl_error($ch);
             }
             curl_close($ch);
+
+            $output = $this->hookAfterExecCurl($output);
 
             if($isError){
                 $data = ['error' => true , 'message' => $errorMessage];
