@@ -70,8 +70,8 @@ class Swissecho
             //Uppercase first letter
             $route= ucfirst($method);
 
-            //Prefix with "via"
-            $viaMethod = 'via'.$route;
+            //Prefix with "to"
+            $viaMethod = 'to'.$route;
 
             //Check if viaMethod exists in the notification class
             if(method_exists($this->notification, $viaMethod)) {
@@ -213,8 +213,8 @@ class Swissecho
     {
         //get default route
         $this->route(null, function(SwissechoMessage $ms) use ($phoneNumber, $message) {
-           return $ms->line($message)
-               ->to($phoneNumber);
+            return $ms->line($message)
+                ->to($phoneNumber);
         })->go();
     }
 

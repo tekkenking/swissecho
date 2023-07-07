@@ -20,7 +20,7 @@ class SmsRoute extends BaseRoute
      */
     public function send($notifiable, Notification $notification): static
     {
-        $this->msgBuilder = $notification->viaSms($notifiable);
+        $this->msgBuilder = $notification->toSms($notifiable);
         $this->msgBuilder->to($this->prepareTo($notifiable));
         $this->msgBuilder->sender($this->prepareSender($notifiable));
         $this->pushToGateway($notifiable);
@@ -60,8 +60,8 @@ class SmsRoute extends BaseRoute
             }
 
             // THIS IS FROM THE CURRENT MODEL
-            if (method_exists($notifiable, 'routeNotificationPhone')) {
-                return $notifiable->routeNotificationPhone($notifiable);
+            if (method_exists($notifiable, 'routeNotificationSmsPhone')) {
+                return $notifiable->routeNotificationSmsPhone($notifiable);
             }
         }
 
