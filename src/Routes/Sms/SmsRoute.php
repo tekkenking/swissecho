@@ -10,6 +10,7 @@ use Tekkenking\Swissecho\SwissechoException;
 class SmsRoute extends BaseRoute
 {
 
+    protected $defaultPlace;
 
     /**
      * @param $notifiable
@@ -37,6 +38,11 @@ class SmsRoute extends BaseRoute
         $this->msgBuilder->sender($this->prepareSender());
         $this->pushToGateway($this->mockedNotifiable);
         return $this;
+    }
+
+    protected function getDefaultPlace()
+    {
+        $this->defaultPlace = array_key_first($this->config['routes_options'][$this->getRoute()]['places']);
     }
 
     /**
@@ -91,27 +97,34 @@ class SmsRoute extends BaseRoute
             throw new SwissechoException('Notification: Invalid sms phone number');
         }
 
+        $this->getDefaultPlace();
         $gatewayConfig = $this->gatewayConfig();
+        $place = $this->defaultPlace;
+
         $this->msgBuilder->gateway = $this->gateway;
+        $this->msgBuilder->phonecode = $this->config['routes_options']['sms']['places'][$place]['phonecode'];
 
         if($notifiable && method_exists($notifiable, 'routeNotificationSmsCountry')) {
             $place = strtolower($notifiable->routeNotificationSmsCountry($notifiable));
 
             if($place) {
                 if(isset($this->config['routes_options']['sms']['places'][$place])) {
-                    $gatewayFromPlace = $this->config['routes_options']['sms']['places'][$place];
+                    $gatewayFromPlaceArr = $this->config['routes_options']['sms']['places'][$place];
 
                     //Load the gateway by place
-                    $gatewayConfig = $this->config['routes_options']['sms']['gateway_options'][$gatewayFromPlace];
+                    $gatewayConfig = $this->config['routes_options']['sms']['gateway_options'][$gatewayFromPlaceArr]['gateway'];
 
-                    $this->msgBuilder->place = $place;
-                    $this->msgBuilder->gateway = $gatewayFromPlace;
+                    $this->msgBuilder->gateway = [$gatewayFromPlaceArr]['gateway'];
+                    $this->msgBuilder->phonecode = [$gatewayFromPlaceArr]['phonecode'];
                 }else {
                     Log::alert('SMSECHO: SMS place does not exist: '.$place, []);
                 }
 
             }
         }
+
+        $this->msgBuilder->place = $place;
+        $this->msgBuilder->to = $this->prepTo($this->msgBuilder->to, $this->msgBuilder->phonecode);
 
         if($this->config['live'] == false) {
             $this->mockSend($gatewayConfig, $this->msgBuilder);
@@ -120,6 +133,20 @@ class SmsRoute extends BaseRoute
             (new $gatewayClass($gatewayConfig, $this->msgBuilder->get()))->boot();
         }
 
+    }
+
+    private function prepTo($to, $phonecode): array
+    {
+        if(!is_array($to)) {
+            $to = explode(',', $to);
+        }
+
+        $toArr = [];
+        foreach ($to ?? [] as $number) {
+            $toArr[] = add_country_code($number, $phonecode);
+        }
+
+        return $toArr;
     }
 
 }

@@ -33,6 +33,8 @@ abstract class BaseRoute implements BaseRouteInterface
      */
     protected mixed $msgBuilder;
 
+    protected $defaultPlace;
+
     /**
      * @var array
      */
@@ -73,7 +75,9 @@ abstract class BaseRoute implements BaseRouteInterface
 
     protected function getDefaultGateway()
     {
-        return $this->config['routes_options'][$this->getRoute()]['gateway'];
+        return reset($this->config['routes_options'][$this->getRoute()]['places'])['gateway'];
+        //dd($places);
+        //return $this->config['routes_options'][$this->getRoute()]['gateway'];
     }
 
     protected function getGateway(): string
@@ -156,12 +160,13 @@ abstract class BaseRoute implements BaseRouteInterface
             //dump($msgBuilder);
             //dd($gatewayConfig);
             $build  = "From: ". $msgBuilder->from."\n";
-            $build .= "To: ". $msgBuilder->to."\n";
+            $build .= "To: ". implode(',', $msgBuilder->to)."\n";
             $build .= "Message: ". $msgBuilder->message . "\n";
             $build .= "============================================\n";
             $build .= "BUILD INFO: (Not included in the actual BODY):\n";
             $build .= "============================================\n";
             $build .= "Country (for sms route): ". $msgBuilder->place ."\n";
+            $build .= "PhoneCode (for sms route): ". $msgBuilder->phonecode ."\n";
             $build .= "Route: ". $this->config['route'] ."\n";
             $build .= "Gateway: ". $msgBuilder->gateway ."\n";
             $build .= "Gateway Class: ". $gatewayConfig['class'] ."\n";
@@ -185,7 +190,7 @@ abstract class BaseRoute implements BaseRouteInterface
         Mail::raw($buildMock, function($message) use ($msgBuilder) {
             $message->to([
                 $this->config['fake_mail']
-            ])->subject('Mock: ['.$msgBuilder->to.']');
+            ])->subject('Mock: ['.implode(',', $msgBuilder->to).']');
         });
     }
 
@@ -193,7 +198,7 @@ abstract class BaseRoute implements BaseRouteInterface
     {
         $this->_prepareLogFile();
         Log::channel('swissecho_mock')
-            ->info("Mock: [".$msgBuilder->to."] \n".$buildMock. "\n");
+            ->info("Mock: [".implode(',', $msgBuilder->to)."] \n".$buildMock. "\n");
     }
 
     /*

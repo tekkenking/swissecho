@@ -16,7 +16,7 @@ return [
 
     'routes_options'    =>  [
         'sms'           =>  [
-            'gateway'   =>  env('SWISSECHO_ROUTE_GATEWAY', 'termii'),
+            //'gateway'   =>  env('SWISSECHO_ROUTE_GATEWAY', 'termii'),
             'gateway_options'  =>  [
                 'termii'        =>  [
                     'class'     =>  Termii::class,
@@ -53,10 +53,19 @@ return [
                     'url'   =>  env('TNZ_URL')
                 ],
             ],
-            'places'    =>  [
-                'nga'   =>  'termii',
-                'aus'   =>  'smsbroadcast',
-                'nzl'   =>  'tnz'
+            'places'  =>  [
+                'aus'   =>  [
+                    'gateway'   => 'smsbroadcast',
+                    'phonecode' =>  '61'
+                ],
+                'nga'   =>  [
+                    'gateway'   => 'termii',
+                    'phonecode' =>  '234'
+                ],
+                'nzl'   =>  [
+                    'gateway'   => 'tnz',
+                    'phonecode' =>  '64'
+                ]
             ]
         ],
 

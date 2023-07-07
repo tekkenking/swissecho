@@ -15,7 +15,7 @@ class Termii extends BaseGateway
         $data = [
             "api_key"   => $this->config['auth']['api_key'],
             "channel"   => $this->config['channel'],
-            "to"        => $this->to,
+            "to"        => implode(',', $this->to),
             "from"      => $this->sender,
             "sms"       => $this->body,
             "type"      => "plain"

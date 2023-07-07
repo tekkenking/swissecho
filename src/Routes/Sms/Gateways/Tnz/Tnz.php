@@ -16,12 +16,15 @@ class Tnz extends \Tekkenking\Swissecho\Routes\Sms\Gateways\BaseGateway
         $this->url          = $this->config['url'];
         $this->authToken    = $this->config['auth']['api_key'];
 
+        $recipientsArr = [];
+        foreach ($this->to as $num) {
+            $recipientsArr[] = ["Recipient" => $num];
+        }
+
         $data = [
             "MessageData" => [
                 "Message" => $this->body,
-                "Destinations" => [
-                    ["Recipient" => $this->to]
-                ],
+                "Destinations" => $recipientsArr,
             ]
         ];
 

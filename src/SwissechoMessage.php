@@ -18,6 +18,7 @@ class SwissechoMessage
     public $sender;
     public $place;
     public $gateway;
+    public $phonecode;
 
     /**
      * @param $msg
