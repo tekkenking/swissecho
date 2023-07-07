@@ -85,7 +85,10 @@ class SmsRoute extends BaseRoute
                 return $notifiable->routeNotificationSmsSender($notifiable);
             }
 
-            return $this->gatewaySender();
+            $gatewaySender = $this->gatewaySender();
+            if($gatewaySender) {
+                return $gatewaySender;
+            }
         }
 
         return $this->msgBuilder->sender;

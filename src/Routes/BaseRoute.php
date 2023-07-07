@@ -114,9 +114,14 @@ abstract class BaseRoute implements BaseRouteInterface
         return $this->gatewayConfig;
     }
 
-    protected function gatewaySender()
+    /**
+     * @return mixed
+     */
+    protected function gatewaySender(): mixed
     {
-        return $this->gatewayConfig()['sender'];
+        return (isset($this->gatewayConfig()['sender']))
+            ? $this->gatewayConfig()['sender']
+            : null;
     }
 
     /**
