@@ -115,10 +115,13 @@ class SmsRoute extends BaseRoute
                     $gatewayFromPlaceArr = $this->config['routes_options']['sms']['places'][$place];
 
                     //Load the gateway by place
-                    $gatewayConfig = $this->config['routes_options']['sms']['gateway_options'][$gatewayFromPlaceArr]['gateway'];
+                    //dd($gatewayFromPlaceArr);
+                    $gatewayConfig = $this->config['routes_options']['sms']['gateway_options'][$gatewayFromPlaceArr['gateway']];
 
-                    $this->msgBuilder->gateway = [$gatewayFromPlaceArr]['gateway'];
-                    $this->msgBuilder->phonecode = [$gatewayFromPlaceArr]['phonecode'];
+
+
+                    $this->msgBuilder->gateway = $gatewayFromPlaceArr['gateway'];
+                    $this->msgBuilder->phonecode = $gatewayFromPlaceArr['phonecode'];
                 }else {
                     Log::alert('SMSECHO: SMS place does not exist: '.$place, []);
                 }
