@@ -41,13 +41,17 @@ abstract class BaseGateway
     public function __construct($gateway_config, $payload)
     {
         $this->payload          = $payload;
+        $this->config   = $gateway_config;
+
         $this->payload['to']    = $this->convertPhoneNumberToArray($this->payload['to']);
 
         //For the sms class
         $this->to = $this->payload['to'];
-        $this->sender = isset($this->payload['sender']) ?: $this->config['sender'];
+        $this->sender = isset($this->payload['sender'])
+            ? $this->payload['sender']
+            : $this->config['sender'];
         $this->body = $this->payload['message'];
-        $this->config   = $gateway_config;
+
     }
 
     /**
