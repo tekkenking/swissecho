@@ -28,7 +28,7 @@ class SwissechoServiceProvider extends ServiceProvider
     public function register()
     {
         $this->mergeConfigFrom(
-            __DIR__.'/config.php', 'swissecho'
+            __DIR__.'/../config/swissecho.php', 'swissecho'
         );
 
 
