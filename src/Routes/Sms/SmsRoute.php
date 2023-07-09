@@ -78,6 +78,7 @@ class SmsRoute extends BaseRoute
      */
     protected function prepareSender($notifiable = null): mixed
     {
+        //dd($this->gatewayConfig());
         if(!$this->msgBuilder->sender ) {
 
             if ($notifiable
@@ -131,6 +132,7 @@ class SmsRoute extends BaseRoute
 
         $this->msgBuilder->place = $place;
         $this->msgBuilder->to = $this->prepTo($this->msgBuilder->to, $this->msgBuilder->phonecode);
+
 
         if($this->config['live'] == false) {
             $this->mockSend($gatewayConfig, $this->msgBuilder);

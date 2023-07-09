@@ -121,7 +121,7 @@ abstract class BaseRoute implements BaseRouteInterface
     {
         return (isset($this->gatewayConfig()['sender']))
             ? $this->gatewayConfig()['sender']
-            : null;
+            : $this->config['sender'];
     }
 
     /**
