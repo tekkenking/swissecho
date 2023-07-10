@@ -2,6 +2,8 @@
 
 namespace Tekkenking\Swissecho\Routes\Sms\Gateways;
 
+use Illuminate\Support\Facades\Log;
+
 abstract class BaseGateway
 {
     /**
@@ -157,7 +159,7 @@ abstract class BaseGateway
             'body'      =>  $this->body
         ];
 
-        //dd($this->serverResponse);
+        Log::info('SMS gateway class: '. get_called_class(), $this->serverResponse);
     }
 
     /**
