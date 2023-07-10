@@ -68,10 +68,7 @@ class SwissechoMessage
     public function to($to): SwissechoMessage
     {
         if($to) {
-            //if(!isset($this->data['to'])){
-            $this->data['to'] = $to;
-            //}
-            $this->to = $this->data['to'];
+            $this->to = $this->data['to'] = $to;
         }
 
         return $this;
@@ -83,7 +80,7 @@ class SwissechoMessage
      */
     public function place(string $place): SwissechoMessage
     {
-        $this->place = $place;
+        $this->place = $this->data['place'] = $place;
         return $this;
     }
 
@@ -93,7 +90,13 @@ class SwissechoMessage
      */
     public function gateway(string $gateway): SwissechoMessage
     {
-        $this->gateway = $gateway;
+        $this->gateway = $this->data['gateway'] = $gateway;
+        return $this;
+    }
+
+    public function phonecode(string $phonecode): SwissechoMessage
+    {
+        $this->phonecode = $this->data['phonecode'] = $phonecode;
         return $this;
     }
 

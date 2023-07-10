@@ -22,7 +22,7 @@ abstract class BaseGateway
     /**
      * @var array
      */
-    private array $setServerResponse;
+    private array $serverResponse;
 
     /**
      * @var array
@@ -42,6 +42,7 @@ abstract class BaseGateway
     {
 
         $this->payload  = $payload;
+        $this->config   = $gateway_config;
 
         $this->payload['to']    = $this->convertPhoneNumberToArray($this->payload['to']);
 
@@ -148,13 +149,15 @@ abstract class BaseGateway
              $response
     ): void
     {
-        $this->setServerResponse = [
+        $this->serverResponse = [
             'status'    =>  $status,
             'response'  =>  $response,
             'from'      =>  $this->sender,
             'to'        =>  $this->to,
             'body'      =>  $this->body
         ];
+
+        //dd($this->serverResponse);
     }
 
     /**
@@ -162,7 +165,7 @@ abstract class BaseGateway
      */
     public function getServerResponse(): array
     {
-        return $this->setServerResponse;
+        return $this->serverResponse;
     }
 
 }

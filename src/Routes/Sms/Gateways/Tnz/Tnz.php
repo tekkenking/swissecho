@@ -24,6 +24,7 @@ class Tnz extends \Tekkenking\Swissecho\Routes\Sms\Gateways\BaseGateway
         $data = [
             "MessageData" => [
                 "Message" => $this->body,
+                "sender"    =>  $this->sender,
                 "Destinations" => $recipientsArr,
             ]
         ];

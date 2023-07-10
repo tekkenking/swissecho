@@ -105,8 +105,8 @@ class SmsRoute extends BaseRoute
         $gatewayConfig = $this->gatewayConfig();
         $place = $this->defaultPlace;
 
-        $this->msgBuilder->gateway = $this->gateway;
-        $this->msgBuilder->phonecode = $this->config['routes_options']['sms']['places'][$place]['phonecode'];
+        $this->msgBuilder->gateway($this->gateway);
+        $this->msgBuilder->phonecode($this->config['routes_options']['sms']['places'][$place]['phonecode']);
 
         if($notifiable && method_exists($notifiable, 'routeNotificationSmsCountry')) {
             $place = strtolower($notifiable->routeNotificationSmsCountry($notifiable));
@@ -121,8 +121,8 @@ class SmsRoute extends BaseRoute
 
 
 
-                    $this->msgBuilder->gateway = $gatewayFromPlaceArr['gateway'];
-                    $this->msgBuilder->phonecode = $gatewayFromPlaceArr['phonecode'];
+                    $this->msgBuilder->gateway($gatewayFromPlaceArr['gateway']);
+                    $this->msgBuilder->phonecode($gatewayFromPlaceArr['phonecode']);
                 }else {
                     Log::alert('SMSECHO: SMS place does not exist: '.$place, []);
                 }
@@ -130,8 +130,8 @@ class SmsRoute extends BaseRoute
             }
         }
 
-        $this->msgBuilder->place = $place;
-        $this->msgBuilder->to = $this->prepTo($this->msgBuilder->to, $this->msgBuilder->phonecode);
+        $this->msgBuilder->place($place);
+        $this->msgBuilder->to($this->prepTo($this->msgBuilder->to, $this->msgBuilder->phonecode));
 
 
         if($this->config['live'] == false) {
