@@ -16,7 +16,6 @@ return [
 
     'routes_options'    =>  [
         'sms'           =>  [
-            //'gateway'   =>  env('SWISSECHO_ROUTE_GATEWAY', 'termii'),
             'gateway_options'  =>  [
                 'termii'        =>  [
                     'class'     =>  Termii::class,
@@ -52,13 +51,13 @@ return [
                     ],
                     'url'   =>  env('TNZ_URL')
                 ],
-                'vonage'    =>  [
-                    'class' =>  \App\Libs\Vonage\Sms\Send::class,
-                    'auth'  =>  [
-                        'api_key'   =>  env('VONAGE_API_KEY'),
-                        'api_token'   =>  env('VONAGE_API_TOKEN'),
-                    ]
-                ]
+//                'vonage'    =>  [
+//                    'class' =>  \App\Libs\Vonage\Sms\Send::class,
+//                    'auth'  =>  [
+//                        'api_key'   =>  env('VONAGE_API_KEY'),
+//                        'api_token'   =>  env('VONAGE_API_TOKEN'),
+//                    ]
+//                ]
             ],
             'places'  =>  [
                 'aus'   =>  [
