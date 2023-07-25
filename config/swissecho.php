@@ -52,6 +52,13 @@ return [
                     ],
                     'url'   =>  env('TNZ_URL')
                 ],
+                'vonage'    =>  [
+                    'class' =>  \App\Libs\Vonage\Sms\Send::class,
+                    'auth'  =>  [
+                        'api_key'   =>  env('VONAGE_API_KEY'),
+                        'api_token'   =>  env('VONAGE_API_TOKEN'),
+                    ]
+                ]
             ],
             'places'  =>  [
                 'aus'   =>  [

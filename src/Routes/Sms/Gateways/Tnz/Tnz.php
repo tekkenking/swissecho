@@ -2,7 +2,9 @@
 
 namespace Tekkenking\Swissecho\Routes\Sms\Gateways\Tnz;
 
-class Tnz extends \Tekkenking\Swissecho\Routes\Sms\Gateways\BaseGateway
+use Tekkenking\Swissecho\Routes\Sms\Gateways\BaseGateway;
+
+class Tnz extends BaseGateway
 {
     private $authToken;
 

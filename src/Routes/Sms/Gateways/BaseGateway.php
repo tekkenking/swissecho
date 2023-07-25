@@ -2,7 +2,10 @@
 
 namespace Tekkenking\Swissecho\Routes\Sms\Gateways;
 
+use App\Channels\Sms\Exceptions\BcSmsException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Tekkenking\Swissecho\SwissechoException;
 
 abstract class BaseGateway
 {
@@ -46,7 +49,7 @@ abstract class BaseGateway
         $this->payload  = $payload;
         $this->config   = $gateway_config;
 
-        $this->payload['to']    = $this->convertPhoneNumberToArray($this->payload['to']);
+        //$this->payload['to']    = $this->convertPhoneNumberToArray($this->payload['to']);
 
         //For the sms class
         $this->to = $this->payload['to'];
@@ -56,15 +59,45 @@ abstract class BaseGateway
     }
 
     /**
+     * @return array
+     */
+    protected function checkDependencies(): array
+    {
+        return [];
+    }
+
+    /**
+     * @return void
+     * @throws SwissechoException
+     */
+    private function processDependencies(): void
+    {
+
+        $dependenciesArr = $this->checkDependencies();
+
+        foreach ($dependenciesArr ?? [] as $depArr) {
+            $className = $depArr[0];
+            $composerRequire = $depArr[1];
+
+            if(!class_exists($className)) {
+                $driverName = Str::before($className, '\\');
+                throw new SwissechoException('Notification: '.$driverName.' driver is missing required dependencies. RUN: & '.$composerRequire .'  in CLI');
+            }
+        }
+
+
+    }
+
+    /**
      * @param $phoneNm
      * @return array
      */
-    protected function convertPhoneNumberToArray($phoneNm): array
-    {
-        return (!is_array($phoneNm))
-            ? preg_split('/\s*,\s*/', trim($phoneNm))
-            : $phoneNm;
-    }
+//    protected function convertPhoneNumberToArray($phoneNm): array
+//    {
+//        return (!is_array($phoneNm))
+//            ? preg_split('/\s*,\s*/', trim($phoneNm))
+//            : $phoneNm;
+//    }
 
     /**
      * @return void
@@ -72,8 +105,9 @@ abstract class BaseGateway
     public function boot(): void
     {
         //dump($this->init());
+        $this->processDependencies();
         $ch = $this->send($this->init());
-        $this->execCurl($ch);
+        $this->execCurl($ch ?? null);
         //dd($this->getServerResponse());
     }
 
@@ -106,8 +140,13 @@ abstract class BaseGateway
      * @param $ch
      * @return array|bool|string|void
      */
-    protected function execCurl($ch)
+    protected function execCurl($ch = null)
     {
+
+        if(!$ch) {
+
+        }
+
         try {
             //get response
             $ch = $this->hookBeforeExecCurl($ch);
@@ -146,10 +185,7 @@ abstract class BaseGateway
      * @param $response
      * @return void
      */
-    public function setServerResponse(
-        bool $status,
-             $response
-    ): void
+    public function setServerResponse(bool $status, $response): void
     {
         $this->serverResponse = [
             'status'    =>  $status,
