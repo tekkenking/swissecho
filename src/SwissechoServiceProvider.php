@@ -17,7 +17,9 @@ class SwissechoServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-
+        $this->publishes([
+            __DIR__.'/../config/swissecho.php' => config_path('swissecho.php'),
+        ]);
     }
 
     /**
