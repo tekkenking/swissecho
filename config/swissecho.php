@@ -1,6 +1,7 @@
 <?php
 
 use Tekkenking\Swissecho\Routes\Slack\SlackRoute;
+use Tekkenking\Swissecho\Routes\Sms\Gateways\Nigerianbulksms\Nigerianbulksms;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Routemobile\RouteMobile;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Smsbroadcast\SmsBroadCastDotComDotAu;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Termii\Termii;
@@ -51,6 +52,13 @@ return [
                     ],
                     'url'   =>  env('TNZ_URL')
                 ],
+                'nigerianbulksms'   =>  [
+                    'class' =>  Nigerianbulksms::class,
+                    'auth'  =>  [
+                        'username'  =>  env('NIGERIANBULKSMS_USERNAME'),
+                        'password'  =>  env('NIGERIANBULKSM_PASSWORD'),
+                    ]
+                ],
 //                'vonage'    =>  [
 //                    'class' =>  \App\Libs\Vonage\Sms\Send::class,
 //                    'auth'  =>  [
@@ -71,6 +79,9 @@ return [
                 'nzl'   =>  [
                     'gateway'   => 'tnz',
                     'phonecode' =>  '64'
+                ],
+                'ngn'   =>  [
+                    'gatewa'
                 ]
             ]
         ],
