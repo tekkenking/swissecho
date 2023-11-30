@@ -73,7 +73,7 @@ return [
                     'phonecode' =>  '61'
                 ],
                 'nga'   =>  [
-                    'gateway'   => 'termii',
+                    'gateway'   => 'nigerianbulksms',
                     'phonecode' =>  '234'
                 ],
                 'nzl'   =>  [
