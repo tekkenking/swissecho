@@ -6,12 +6,13 @@ use Tekkenking\Swissecho\Routes\Sms\Gateways\Routemobile\RouteMobile;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Smsbroadcast\SmsBroadCastDotComDotAu;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Termii\Termii;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Tnz\Tnz;
+use Tekkenking\Swissecho\Routes\Voice\Gateways\Termii\TermiiVoiceCall;
 
 return [
 
     'live'      =>  env('SWISSECHO_ENABLED', false),
     'sender'    =>  env('SWISSECHO_SENDER'),
-    'fake'      =>  env('SWISSECHO_FAKE', 'log'),
+    'fake'      =>  env('SWISSECHO_FAKE', 'log'), //mail
     'fake_mail'      =>  env('SWISSECHO_FAKE_MAIL', 'admin@example.com'),
     'route'     =>  env('SWISSECHO_ROUTE', 'sms'),
 
@@ -59,13 +60,13 @@ return [
                         'password'  =>  env('NIGERIANBULKSM_PASSWORD'),
                     ]
                 ],
-//                'vonage'    =>  [
-//                    'class' =>  \App\Libs\Vonage\Sms\Send::class,
-//                    'auth'  =>  [
-//                        'api_key'   =>  env('VONAGE_API_KEY'),
-//                        'api_token'   =>  env('VONAGE_API_TOKEN'),
-//                    ]
-//                ]
+                /*'vonage'    =>  [
+                    'class' =>  \App\Libs\Vonage\Sms\Send::class,
+                    'auth'  =>  [
+                        'api_key'   =>  env('VONAGE_API_KEY'),
+                        'api_token'   =>  env('VONAGE_API_TOKEN'),
+                    ]
+                ]*/
             ],
             'places'  =>  [
                 'aus'   =>  [
@@ -79,9 +80,6 @@ return [
                 'nzl'   =>  [
                     'gateway'   => 'tnz',
                     'phonecode' =>  '64'
-                ],
-                'ngn'   =>  [
-                    'gatewa'
                 ]
             ]
         ],
@@ -91,7 +89,19 @@ return [
             'auth'  =>  [
                 //'api'   =>
             ]
-        ]
+        ],
+
+        'voice'  =>  [
+            'gateway_options'   =>  [
+                'termii'        =>  [
+                    'class'     =>  TermiiVoiceCall::class,
+                    'auth'      =>  [
+                        'api_key'   =>  env('TERMII_API_KEY')
+                    ],
+                    'url'       =>  'https://api.ng.termii.com/api/sms/otp/send/voice'
+                ],
+            ],
+        ],
 
     ]
 
