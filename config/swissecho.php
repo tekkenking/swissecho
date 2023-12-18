@@ -101,6 +101,12 @@ return [
                     'url'       =>  'https://api.ng.termii.com/api/sms/otp/send/voice'
                 ],
             ],
+            'places'  =>  [
+                'nga'   =>  [
+                    'gateway'   => 'termii',
+                    'phonecode' =>  '234'
+                ]
+            ]
         ],
 
     ]

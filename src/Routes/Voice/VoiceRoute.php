@@ -26,9 +26,63 @@ class VoiceRoute extends BaseRoute
         return $this;
     }
 
+    protected function getDefaultPlace()
+    {
+        $this->defaultPlace = array_key_first($this->config['routes_options'][$this->getRoute()]['places']);
+    }
+
     protected function pushToGateway($notifiable = null)
     {
+        if(!$this->msgBuilder->to) {
+            throw new SwissechoException('Notification: Invalid sms phone number');
+        }
 
+        $this->getDefaultPlace();
+
+        $gatewayConfig = $this->gatewayConfig();
+        $place = $this->defaultPlace;
+
+        $this->msgBuilder->gateway($this->gateway);
+        $this->msgBuilder->phonecode($this->config['routes_options']['voice']['places'][$place]['phonecode']);
+
+        if($notifiable && method_exists($notifiable, 'routeNotificationSmsCountry')) {
+            $place = strtolower($notifiable->routeNotificationSmsCountry($notifiable));
+
+            if($place) {
+                if(isset($this->config['routes_options']['voice']['places'][$place])) {
+                    $gatewayFromPlaceArr = $this->config['routes_options']['voice']['places'][$place];
+
+                    //Load the gateway by place
+                    $gatewayConfig = $this->config['routes_options']['voice']['gateway_options'][$gatewayFromPlaceArr['gateway']];
+
+
+
+                    $this->msgBuilder->gateway($gatewayFromPlaceArr['gateway']);
+                    $this->msgBuilder->phonecode($gatewayFromPlaceArr['phonecode']);
+                }else {
+                    Log::alert('SMSECHO: SMS place does not exist: '.$place, []);
+                }
+
+            }
+
+        }
+
+        $this->msgBuilder->place($place);
+        $this->msgBuilder->to($this->prepTo($this->msgBuilder->to, $this->msgBuilder->phonecode));
+        $this->config['route'] = 'voice';
+
+        if($this->config['live'] == false) {
+            $this->mockSend($gatewayConfig, $this->msgBuilder);
+        } else {
+            $gatewayClass = $gatewayConfig['class'];
+            (new $gatewayClass($gatewayConfig, $this->msgBuilder->get()))->boot();
+        }
+
+    }
+
+    private function prepTo(string $to, $phonecode): array
+    {
+        return [add_country_code($to, $phonecode)];
     }
 
 }

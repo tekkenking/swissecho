@@ -14,7 +14,7 @@ class TermiiVoiceCall extends BaseGateway
     {
         $data = [
             "api_key"   => $this->config['auth']['api_key'],
-            "to"        => $this->to,
+            "phone_number"        => $this->to,
             "code"       => $this->body
         ];
 
@@ -23,7 +23,6 @@ class TermiiVoiceCall extends BaseGateway
 
     public function send($data): \CurlHandle|bool
     {
-        dd($data);
 
         $curl = curl_init();
         curl_setopt_array($curl, array(

@@ -24,7 +24,7 @@ abstract class BaseGateway
         $this->config   = $gateway_config;
 
         //For the sms class
-        $this->to = (string) $this->payload['to'];
+        $this->to = (string) $this->payload['to'][0];
         $this->body = (int)$this->payload['message']; //The OTP code
 
     }

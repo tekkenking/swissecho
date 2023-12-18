@@ -169,8 +169,8 @@ abstract class BaseRoute implements BaseRouteInterface
             $build .= "============================================\n";
             $build .= "BUILD INFO: (Not included in the actual BODY):\n";
             $build .= "============================================\n";
-            $build .= "Country (for sms route): ". $msgBuilder->place ."\n";
-            $build .= "PhoneCode (for sms route): ". $msgBuilder->phonecode ."\n";
+            $build .= "Country (for ".$this->config['route']." route): ". $msgBuilder->place ."\n";
+            $build .= "PhoneCode (for ".$this->config['route']." route): ". $msgBuilder->phonecode ."\n";
             $build .= "Route: ". $this->config['route'] ."\n";
             $build .= "Gateway: ". $msgBuilder->gateway ."\n";
             $build .= "Gateway Class: ". $gatewayConfig['class'] ."\n";
