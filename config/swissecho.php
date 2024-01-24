@@ -7,6 +7,7 @@ use Tekkenking\Swissecho\Routes\Sms\Gateways\Smsbroadcast\SmsBroadCastDotComDotA
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Termii\Termii;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Tnz\Tnz;
 use Tekkenking\Swissecho\Routes\Voice\Gateways\Termii\TermiiVoiceCall;
+use Tekkenking\Swissecho\Routes\Voice\Gateways\Textngxyz\TextngxyzVoiceCall;
 
 return [
 
@@ -93,13 +94,22 @@ return [
 
         'voice'  =>  [
             'gateway_options'   =>  [
+
                 'termii'        =>  [
                     'class'     =>  TermiiVoiceCall::class,
                     'auth'      =>  [
                         'api_key'   =>  env('TERMII_API_KEY')
                     ],
-                    'url'       =>  'https://api.ng.termii.com/api/sms/otp/send/voice'
+                    'url'       =>  'https://api.ng.termii.com/api/sms/otp/call'
                 ],
+                'textngxyz'     =>  [
+                    'class'     =>  TextngxyzVoiceCall::class,
+                    'auth'      =>  [
+                        'api_key'   =>  env('TEXTNGXYZ_API_KEY')
+                    ],
+                    'url'       =>  'https://api.textng.xyz/voice-otp/',
+                    'repeat_times'  =>  2
+                ]
             ],
             'places'  =>  [
                 'nga'   =>  [

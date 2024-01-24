@@ -23,7 +23,6 @@ class TermiiVoiceCall extends BaseGateway
 
     public function send($data): \CurlHandle|bool
     {
-
         $curl = curl_init();
         curl_setopt_array($curl, array(
             CURLOPT_URL => $this->config['url'],
@@ -33,7 +32,7 @@ class TermiiVoiceCall extends BaseGateway
             CURLOPT_TIMEOUT => 0,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => "GET",
+            CURLOPT_CUSTOMREQUEST => "POST",
             CURLOPT_POSTFIELDS => json_encode($data),
             CURLOPT_HTTPHEADER => array(
                 "Content-Type: application/json"
