@@ -59,7 +59,8 @@ return [
                     'auth'  =>  [
                         'username'  =>  env('NIGERIANBULKSMS_USERNAME'),
                         'password'  =>  env('NIGERIANBULKSM_PASSWORD'),
-                    ]
+                    ],
+                    'url'   =>  env('NIGERIANBULKSMS_URL', 'https://portal.nigeriabulksms.com/api/'),
                 ],
                 /*'vonage'    =>  [
                     'class' =>  \App\Libs\Vonage\Sms\Send::class,

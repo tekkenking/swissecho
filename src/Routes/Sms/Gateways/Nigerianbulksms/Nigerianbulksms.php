@@ -25,7 +25,7 @@ class Nigerianbulksms extends BaseGateway
             'verbose'   =>  'true'
         ];
 
-        $url = $this->url."?username={$pd['username']}&password={$pd['password']}&message={$pd['message']}&sender={$pd['sender']}&mobiles={$pd['mobiles']}&verbose={$pd['verbose']}";
+        $url = $this->config['url']."?username={$pd['username']}&password={$pd['password']}&message={$pd['message']}&sender={$pd['sender']}&mobiles={$pd['mobiles']}&verbose={$pd['verbose']}";
 
         return $url;
     }
