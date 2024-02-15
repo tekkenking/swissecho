@@ -17,11 +17,11 @@ class Nigerianbulksms extends BaseGateway
 
         //Preparing post parameters
         $pd = [
-            'username'  => urlencode($username),
-            'password'  => urlencode($password),
+            'username'  => $username,
+            'password'  => $password,
             'message'   => $this->body,
             'sender'    => $this->sender,
-            'mobiles'   => implode(',',$this->to),
+            'mobiles'   => str_replace('+', '', implode(',',$this->to)),
             'verbose'   =>  'true'
         ];
 
