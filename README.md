@@ -30,13 +30,13 @@ The following are different ways to use the Swissecho package:
 
 ```php
     Swissecho::route('sms', function($ms) {
-        return $ms->to('08092293336, 08077379160 ')
+        return $ms->to('XXXXXXXXXXXX, XXXXXXXXXXXX ')
             ->content('Wonders shall never end')
             ->line('Hello world');
             //->gateway('routemobile') //optional
             //->sender('SimbooBiz'); //optional
     })
-    ->to('9023940233') //optional
+    ->to('XXXXXXXXXXXX') //optional
     ->sender('Smart') //optional
     ->gateway('termii') //optional
     ->go();
@@ -46,13 +46,13 @@ The following are different ways to use the Swissecho package:
 
 ```php
     swissecho()->route('sms', function($ms) {
-        return $ms->to('08092293336, 08077379160 ')
+        return $ms->to('XXXXXXXXXXXX, XXXXXXXXXXXX ')
             ->content('Wonders shall never end')
             ->line('Hello world');
             //->gateway('routemobile') //optional
             //->sender('SimbooBiz'); //optional
     })
-    ->to('9023940233') //optional
+    ->to('XXXXXXXXXXXX') //optional
     ->sender('Smart') //optional
     ->gateway('termii') //optional
     ->go();
@@ -61,14 +61,14 @@ The following are different ways to use the Swissecho package:
 ### Use Case 2
 
 ```php
-    swissecho()->quick('0909229333', "My name is bola");
+    swissecho()->quick('XXXXXXXXXXXX', "My name is bola");
 ```
 
 ### Use Case 3 (Slack)
 
 ```php
     swissecho()->message("Hello world")
-    ->to('08092293336')
+    ->to('XXXXXXXXXXXX')
     //->sender('Raimi')
     //->gateway('termii')
     ->route('slack')
@@ -78,7 +78,7 @@ The following are different ways to use the Swissecho package:
 ### Use Case 4 (Vonage)
 
 ```php
-    swissecho()->gateway('vonage')->quick('0909229333', "My name is bola");
+    swissecho()->gateway('vonage')->quick('XXXXXXXXXXXX', "My name is bola");
 ```
 
 ### Use Case 5 (Termii)
@@ -87,7 +87,7 @@ The following are different ways to use the Swissecho package:
     $sw = swissecho();
     //$sw->mockNotifiable($user);
     $sw->gateway('termii');
-    $sw->to = "08092293336";
+    $sw->to = "XXXXXXXXXXXX";
     $sw->sender = "AXIX";
     $sw->message = "The world is a beauty place created by GOD";
     $sw->go();
