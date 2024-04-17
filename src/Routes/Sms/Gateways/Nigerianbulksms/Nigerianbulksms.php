@@ -14,6 +14,7 @@ class Nigerianbulksms extends BaseGateway
     {
         $username = $this->config['auth']['username'];
         $password = $this->config['auth']['password'];
+        $this->body = urlencode($this->body);
 
         //Preparing post parameters
         $pd = [
