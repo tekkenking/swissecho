@@ -40,13 +40,20 @@ trait SwissechoGatewayTrait
     /**
      * @return void
      */
-    public function boot(): void
+    public function boot(): self
     {
         //dump($this->init());
         $this->processDependencies();
         $ch = $this->send($this->init());
         $this->execCurl($ch ?? null);
         //dd($this->getServerResponse());
+
+        return $this;
+    }
+
+    public function coldBoot(): self
+    {
+        return $this;
     }
 
     /**
@@ -139,6 +146,15 @@ trait SwissechoGatewayTrait
         } catch (\Exception $exception) {
             $this->setServerResponse(false, $exception->getMessage());
         }
+    }
+
+
+    /**
+     * @return array
+     */
+    public function getServerResponse(): array
+    {
+        return $this->serverResponse;
     }
 
 

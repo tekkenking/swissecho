@@ -134,11 +134,16 @@ class SmsRoute extends BaseRoute
         $this->msgBuilder->to($this->prepTo($this->msgBuilder->to, $this->msgBuilder->phonecode));
         $this->config['route'] = 'sms';
 
+        $gatewayClass = $gatewayConfig['class'];
+
         if($this->config['live'] == false) {
-            $this->mockSend($gatewayConfig, $this->msgBuilder);
+            $mockResponseArr = $this->mockSend($gatewayConfig, $this->msgBuilder);
+            $coldBoot = (new $gatewayClass($gatewayConfig, $this->msgBuilder->get()))->coldBoot();
+            $coldBoot->setServerResponse(true, $mockResponseArr['response']);
+            return $coldBoot;
+
         } else {
-            $gatewayClass = $gatewayConfig['class'];
-            (new $gatewayClass($gatewayConfig, $this->msgBuilder->get()))->boot();
+            return (new $gatewayClass($gatewayConfig, $this->msgBuilder->get()))->boot();
         }
 
     }

@@ -186,6 +186,16 @@ abstract class BaseRoute implements BaseRouteInterface
 
         if($buildMock) {
             $this->$mockMethod($buildMock, $gatewayConfig, $msgBuilder);
+            return [
+                'status'    =>  true,
+                'response'  =>  [
+                    'gateway'   =>  $msgBuilder->gateway,
+                    'message'   =>  $buildMock
+                ],
+                'from'      =>  $msgBuilder->from,
+                'to'        =>  $msgBuilder->to,
+                'body'      =>  $msgBuilder->message
+            ];
         }
     }
 

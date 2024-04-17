@@ -3,8 +3,8 @@
 namespace Tekkenking\Swissecho\Routes\Sms\Gateways;
 
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use Tekkenking\Swissecho\SwissechoException;
+//use Illuminate\Support\Str;
+//use Tekkenking\Swissecho\SwissechoException;
 use Tekkenking\Swissecho\SwissechoGatewayTrait;
 
 abstract class BaseGateway
@@ -53,14 +53,6 @@ abstract class BaseGateway
         ];
 
         Log::info('SMS gateway class: '. get_called_class(), $this->serverResponse);
-    }
-
-    /**
-     * @return array
-     */
-    public function getServerResponse(): array
-    {
-        return $this->serverResponse;
     }
 
 }
