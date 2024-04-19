@@ -39,6 +39,9 @@ trait SwissechoGatewayTrait
 
     private $responsePayload;
 
+    /**
+     * @var array
+     */
     private $requestPayload;
 
     /**
@@ -162,11 +165,16 @@ trait SwissechoGatewayTrait
         return $this->serverResponse;
     }
 
-    public function dd()
+
+    /**
+     * Summary of insight
+     * @return array
+     */
+    public function insight(): array
     {
         return [
-            'requestPayload'    =>  $this->requestPayload,
-            'responsePayload'   =>  $this->responsePayload
+            'request'    =>  $this->requestPayload,
+            'response'   =>  $this->responsePayload
         ];
     }
 
