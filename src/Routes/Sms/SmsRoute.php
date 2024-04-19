@@ -99,9 +99,14 @@ class SmsRoute extends BaseRoute
             throw new SwissechoException('Notification: Invalid sms phone number');
         }
 
-        $this->getDefaultPlace();
+        if(!$place = $this->msgBuilder->place) {
+            $this->getDefaultPlace();
+            $place = $this->defaultPlace;
+        }
+
+
         $gatewayConfig = $this->gatewayConfig();
-        $place = $this->defaultPlace;
+
 
         $this->msgBuilder->gateway($this->gateway);
         $this->msgBuilder->phonecode($this->config['routes_options']['sms']['places'][$place]['phonecode']);
