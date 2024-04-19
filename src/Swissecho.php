@@ -162,10 +162,9 @@ class Swissecho
     }
 
     /**
-     * @return void
      * @throws SwissechoException
      */
-    public function go(): void
+    public function go()
     {
 
         //checking if initRoute is already initiated
@@ -199,9 +198,9 @@ class Swissecho
                 $prepped->setMockedNotifiable($this->mockedNotifiable);
             }
 
-            $prepped->bootByDirect($this->echoBuilderMessage);
+            return $prepped->bootByDirect($this->echoBuilderMessage);
         } else {
-            $prepped->bootByNotification($this->notifiable, $this->notification);
+            return $prepped->bootByNotification($this->notifiable, $this->notification);
         }
 
     }
@@ -209,10 +208,10 @@ class Swissecho
     /**
      * @throws SwissechoException
      */
-    public function quick($phoneNumber, $message): void
+    public function quick($phoneNumber, $message)
     {
         //get default route
-        $this->route(null, function(SwissechoMessage $ms) use ($phoneNumber, $message) {
+        return $this->route(null, function(SwissechoMessage $ms) use ($phoneNumber, $message) {
             return $ms->line($message)
                 ->to($phoneNumber);
         })->go();

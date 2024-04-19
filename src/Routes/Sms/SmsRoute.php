@@ -18,7 +18,7 @@ class SmsRoute extends BaseRoute
      * @return SmsRoute
      * @throws SwissechoException
      */
-    public function send($notifiable, Notification $notification): static
+    public function send($notifiable, Notification $notification)
     {
         $this->msgBuilder = $notification->toSms($notifiable);
         $this->msgBuilder->to($this->prepareTo($notifiable));
@@ -29,15 +29,13 @@ class SmsRoute extends BaseRoute
 
     /**
      * @param $routeBuilder
-     * @return $this
      * @throws SwissechoException
      */
-    public function directSend($routeBuilder): static
+    public function directSend($routeBuilder)
     {
         $this->msgBuilder = $routeBuilder;
         $this->msgBuilder->sender($this->prepareSender());
-        $this->pushToGateway($this->mockedNotifiable);
-        return $this;
+        return $this->pushToGateway($this->mockedNotifiable);
     }
 
     protected function getDefaultPlace()

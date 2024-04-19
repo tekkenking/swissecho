@@ -42,9 +42,9 @@ abstract class BaseRoute implements BaseRouteInterface
 
     protected $mockedNotifiable;
 
-    abstract public function send($notifiable, Notification $notification): static;
+    abstract public function send($notifiable, Notification $notification);
 
-    abstract public function directSend($routeBuilder): static;
+    abstract public function directSend($routeBuilder);
 
     /**
      * @return void
@@ -131,25 +131,23 @@ abstract class BaseRoute implements BaseRouteInterface
     /**
      * @param $notifiable
      * @param Notification $notification
-     * @return void
      */
-    public function bootByNotification($notifiable, Notification $notification): void
+    public function bootByNotification($notifiable, Notification $notification)
     {
-        $this->send($notifiable, $notification);
+        return $this->send($notifiable, $notification);
     }
 
     /**
      * @param $routeBuilder
-     * @return void
      */
-    public function bootByDirect($routeBuilder): void
+    public function bootByDirect($routeBuilder)
     {
         $this->loadConfig();
         if($routeBuilder->gateway) {
             $this->gateway($routeBuilder->gateway);
         }
 
-        $this->directSend($routeBuilder);
+        return $this->directSend($routeBuilder);
     }
 
     public function setMockedNotifiable($mocked)

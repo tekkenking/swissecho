@@ -37,6 +37,10 @@ trait SwissechoGatewayTrait
      */
     private array $serverResponse;
 
+    private $responsePayload;
+
+    private array $requestPayload;
+
     /**
      * @return void
      */
@@ -44,7 +48,8 @@ trait SwissechoGatewayTrait
     {
         //dump($this->init());
         $this->processDependencies();
-        $ch = $this->send($this->init());
+        $this->requestPayload = $this->init();
+        $ch = $this->send($this->requestPayload);
         $this->execCurl($ch ?? null);
         //dd($this->getServerResponse());
 
@@ -119,7 +124,7 @@ trait SwissechoGatewayTrait
             //get response
             $ch = $this->hookBeforeExecCurl($ch);
 
-            $output = curl_exec($ch);
+            $output = $this->responsePayload = curl_exec($ch);
 
             //Print error if any
             $isError = false;
@@ -155,6 +160,14 @@ trait SwissechoGatewayTrait
     public function getServerResponse(): array
     {
         return $this->serverResponse;
+    }
+
+    public function dd()
+    {
+        return [
+            'requestPayload'    =>  $this->requestPayload,
+            'responsePayload'   =>  $this->responsePayload
+        ];
     }
 
 
