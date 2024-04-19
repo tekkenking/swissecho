@@ -35,11 +35,11 @@ trait SwissechoGatewayTrait
     /**
      * @var array
      */
-    private array $serverResponse;
+    private $serverResponse;
 
     private $responsePayload;
 
-    private array $requestPayload;
+    private $requestPayload;
 
     /**
      * @return void
