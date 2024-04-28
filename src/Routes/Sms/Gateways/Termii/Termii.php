@@ -2,6 +2,7 @@
 
 namespace Tekkenking\Swissecho\Routes\Sms\Gateways\Termii;
 
+use Request;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\BaseGateway;
 
 class Termii extends BaseGateway
@@ -43,6 +44,11 @@ class Termii extends BaseGateway
         ));
 
         return $curl;
+    }
+
+    public function webhook(Request $request)
+    {
+        dump($request->all());
     }
 
 
