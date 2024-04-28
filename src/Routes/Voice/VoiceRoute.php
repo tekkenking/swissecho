@@ -26,6 +26,31 @@ class VoiceRoute extends BaseRoute
         return $this;
     }
 
+    /**
+     * @param $notifiable
+     * @return mixed
+     * @throws SwissechoException
+     */
+    protected function prepareTo($notifiable): mixed
+    {
+        if(!$this->msgBuilder->to) {
+
+            // THIS IS FROM TEMPUSERS TABLE
+            if (isset($notifiable->phone)) {
+                return $notifiable->phone;
+            }
+
+            // THIS IS FROM THE CURRENT MODEL
+            if (method_exists($notifiable, 'routeNotificationSmsPhone')) {
+                return $notifiable->routeNotificationSmsPhone($notifiable);
+            }
+        }
+
+        return $this->msgBuilder->to;
+
+        //throw new SwissechoException('Notification: Invalid sms phone number');
+    }
+
     protected function getDefaultPlace()
     {
         $this->defaultPlace = array_key_first($this->config['routes_options'][$this->getRoute()]['places']);
