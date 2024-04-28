@@ -13,7 +13,7 @@ class VoiceRoute extends BaseRoute
 
     public function send($notifiable, Notification $notification): static
     {
-        $this->msgBuilder = $notification->toSms($notifiable);
+        $this->msgBuilder = $notification->toVoice($notifiable);
         $this->msgBuilder->to($this->prepareTo($notifiable));
         $this->pushToGateway($notifiable);
         return $this;
