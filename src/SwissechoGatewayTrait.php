@@ -3,6 +3,7 @@
 namespace Tekkenking\Swissecho;
 
 use Illuminate\Support\Str;
+use Tekkenking\Swissecho\Events\AfterSend;
 
 trait SwissechoGatewayTrait
 {
@@ -149,10 +150,13 @@ trait SwissechoGatewayTrait
             $status = !$isError;
             $this->setServerResponse($status, $data);
 
+            AfterSend::dispatch($this->insight(), $data);
+
             return $data;
 
         } catch (\Exception $exception) {
             $this->setServerResponse(false, $exception->getMessage());
+            AfterSend::dispatch($this->insight(), $data);
         }
     }
 
