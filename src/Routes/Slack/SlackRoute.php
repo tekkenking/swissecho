@@ -11,6 +11,7 @@ class SlackRoute extends BaseRoute
     public function send($notifiable, Notification $notification): static
     {
         // TODO: Implement send() method.
+        return $this;
     }
 
     public function directSend($routeBuilder): static
