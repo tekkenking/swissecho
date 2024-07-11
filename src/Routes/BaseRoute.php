@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Tekkenking\Swissecho\SwissechoMessage;
 
 abstract class BaseRoute implements BaseRouteInterface
 {
@@ -31,7 +32,7 @@ abstract class BaseRoute implements BaseRouteInterface
     /**
      * @var mixed
      */
-    protected mixed $msgBuilder;
+    protected SwissechoMessage $msgBuilder;
 
     protected $defaultPlace;
 
@@ -195,6 +196,8 @@ abstract class BaseRoute implements BaseRouteInterface
                 'body'      =>  $msgBuilder->message
             ];
         }
+
+        return [];
     }
 
     public function mockByMail($buildMock, $gatewayConfig, $msgBuilder)
