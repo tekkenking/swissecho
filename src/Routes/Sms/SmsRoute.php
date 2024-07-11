@@ -23,8 +23,16 @@ class SmsRoute extends BaseRoute
         $this->msgBuilder = $notification->toSms($notifiable);
         $this->msgBuilder->to($this->prepareTo($notifiable));
         $this->msgBuilder->sender($this->prepareSender($notifiable));
+        $this->setIdentifier($notifiable);
         $this->pushToGateway($notifiable);
         return $this;
+    }
+
+    public function setIdentifier($notifiable)
+    {
+        if(!isset($this->msgBuilder->identifider)) {
+            $this->msgBuilder->identifier($notifiable);
+        }
     }
 
     /**

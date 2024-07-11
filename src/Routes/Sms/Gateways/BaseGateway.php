@@ -28,6 +28,9 @@ abstract class BaseGateway
         $this->sender = $this->payload['sender'];
         $this->body = $this->payload['message'];
 
+        if(isset($this->payload['identifier'])) {
+            $this->identifier = $this->payload['identifier'];
+        }
     }
 
     /**

@@ -19,6 +19,7 @@ class SwissechoMessage
     public $place;
     public $gateway;
     public $phonecode;
+    public $identifier;
 
     /**
      * @param $msg
@@ -97,6 +98,12 @@ class SwissechoMessage
     public function phonecode(string $phonecode): SwissechoMessage
     {
         $this->phonecode = $this->data['phonecode'] = $phonecode;
+        return $this;
+    }
+
+    public function identifier($identifier): SwissechoMessage
+    {
+        $this->identifier = $this->data['identifier'] = $identifier;
         return $this;
     }
 

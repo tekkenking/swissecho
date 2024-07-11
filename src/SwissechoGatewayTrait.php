@@ -24,6 +24,11 @@ trait SwissechoGatewayTrait
     public string $body;
 
     /**
+     * @var string|mixed
+     */
+    public mixed $identifier = null;
+
+    /**
      * @var array
      */
     private array $payload;
@@ -150,13 +155,13 @@ trait SwissechoGatewayTrait
             $status = !$isError;
             $this->setServerResponse($status, $data);
 
-            AfterSend::dispatch($this->insight(), $data);
+            AfterSend::dispatch($this->insight(), $data, $this->identifier);
 
             return $data;
 
         } catch (\Exception $exception) {
             $this->setServerResponse(false, $exception->getMessage());
-            AfterSend::dispatch($this->insight(), $data);
+            AfterSend::dispatch($this->insight(), $data, $this->identifier);
         }
     }
 
