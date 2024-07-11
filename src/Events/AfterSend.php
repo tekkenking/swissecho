@@ -10,10 +10,12 @@ class AfterSend
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+
+
     /**
      * Create a new event instance.
      */
     public function __construct(
-        public array $insightPayload, public $rawResponsePayload
+        public array $insightPayload, public $rawResponsePayload, public $identifier
     ) {}
 }
