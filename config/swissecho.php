@@ -75,13 +75,13 @@ return [
                 ]*/
             ],
             'places'  =>  [
-                'aus'   =>  [
-                    'gateway'   => 'smsbroadcast',
-                    'phonecode' =>  '61'
-                ],
                 'nga'   =>  [
                     'gateway'   => 'nigerianbulksms',
                     'phonecode' =>  '234'
+                ],
+                'aus'   =>  [
+                    'gateway'   => 'smsbroadcast',
+                    'phonecode' =>  '61'
                 ],
                 'nzl'   =>  [
                     'gateway'   => 'tnz',
