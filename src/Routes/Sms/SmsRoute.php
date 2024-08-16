@@ -30,7 +30,7 @@ class SmsRoute extends BaseRoute
 
     public function setIdentifier($notifiable)
     {
-        if(!isset($this->msgBuilder->identifider)) {
+        if(!isset($this->msgBuilder->identifier)) {
             $this->msgBuilder->identifier($notifiable);
         }
     }
