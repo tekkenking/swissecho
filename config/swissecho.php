@@ -1,6 +1,7 @@
 <?php
 
 use Tekkenking\Swissecho\Routes\Slack\SlackRoute;
+use Tekkenking\Swissecho\Routes\Sms\Gateways\Montnets\Montnets;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Nigerianbulksms\Nigerianbulksms;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Routemobile\RouteMobile;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Smsbroadcast\SmsBroadCastDotComDotAu;
@@ -65,6 +66,14 @@ return [
                         'password'  =>  env('NIGERIANBULKSM_PASSWORD'),
                     ],
                     'url'   =>  env('NIGERIANBULKSMS_URL', 'https://portal.nigeriabulksms.com/api/'),
+                ],
+                'montnets'        =>  [
+                    'class'     =>  Montnets::class,
+                    'url'       =>  env('MONTNETS_SMS_URL'),
+                    'auth'      =>  [
+                        'username'  =>  env('MONTNETS_SMS_USERNAME'),
+                        'password'  =>  env('MONTNETS_SMS_PASSWORD'),
+                    ]
                 ],
                 /*'vonage'    =>  [
                     'class' =>  \App\Libs\Vonage\Sms\Send::class,
