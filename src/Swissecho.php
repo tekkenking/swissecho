@@ -3,7 +3,6 @@
 namespace Tekkenking\Swissecho;
 
 use Illuminate\Notifications\Notification;
-use Tekkenking\Swissecho\Routes\BaseRoute;
 
 /**
  *  $sw->route('sms')
@@ -27,7 +26,7 @@ class Swissecho
      */
     private array $vias = ['sms', 'slack', 'whatsapp'];
 
-    private BaseRoute $initRoute;
+    private $initRoute;
 
     private $isCallBack = false;
 
@@ -43,7 +42,8 @@ class Swissecho
     public $to;
 
     public $sender;
-    private $mockedNotifiable = null;
+
+    public $directNotifiable;
 
 
     /**
@@ -70,8 +70,8 @@ class Swissecho
             //Uppercase first letter
             $route= ucfirst($method);
 
-            //Prefix with "to"
-            $viaMethod = 'to'.$route;
+            //Prefix with "via"
+            $viaMethod = 'via'.$route;
 
             //Check if viaMethod exists in the notification class
             if(method_exists($this->notification, $viaMethod)) {
@@ -162,9 +162,10 @@ class Swissecho
     }
 
     /**
+     * @return mixed
      * @throws SwissechoException
      */
-    public function go()
+    public function go(): mixed
     {
 
         //checking if initRoute is already initiated
@@ -194,12 +195,9 @@ class Swissecho
                 $this->echoBuilderMessage->sender($this->sender);
             }
 
-            if($this->mockedNotifiable) {
-                $prepped->setMockedNotifiable($this->mockedNotifiable);
-            }
-
             return $prepped->bootByDirect($this->echoBuilderMessage);
         } else {
+            $this->notifiable = $this->directNotifiable ?? $this->notifiable;
             return $prepped->bootByNotification($this->notifiable, $this->notification);
         }
 
@@ -208,12 +206,12 @@ class Swissecho
     /**
      * @throws SwissechoException
      */
-    public function quick($phoneNumber, $message)
+    public function quick($phoneNumber, $message): void
     {
         //get default route
-        return $this->route(null, function(SwissechoMessage $ms) use ($phoneNumber, $message) {
-            return $ms->line($message)
-                ->to($phoneNumber);
+        $this->route(null, function(SwissechoMessage $ms) use ($phoneNumber, $message) {
+           return $ms->line($message)
+               ->to($phoneNumber);
         })->go();
     }
 
@@ -241,24 +239,17 @@ class Swissecho
         return $this;
     }
 
-    /**
-     * @param $sender
-     * @return Swissecho
-     */
     public function sender($sender)
     {
         $this->sender = $sender;
         return $this;
     }
 
-    /**
-     * @param $notifiable
-     * @return Swissecho
-     */
-    public function mockNotifiable($notifiable)
+    public function makeNotifiable($notifiable)
     {
-        $this->mockedNotifiable = $notifiable;
+        $this->directNotifiable = $notifiable;
         return $this;
     }
+
 
 }

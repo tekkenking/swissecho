@@ -1,6 +1,6 @@
 <?php
 
-namespace Tekkenking\Swissecho\Routes\Sms\Gateways;
+namespace Tekkenking\Swissecho\Routes\Whatsapp\Gateways;
 
 abstract class BaseGateway
 {
@@ -41,7 +41,7 @@ abstract class BaseGateway
     public function __construct($gateway_config, $payload)
     {
         $this->payload          = $payload;
-        //$this->payload['to']    = $this->convertPhoneNumberToArray($this->payload['to']);
+        $this->payload['to']    = $this->convertPhoneNumberToArray($this->payload['to']);
 
         //For the sms class
         $this->to = $this->payload['to'];

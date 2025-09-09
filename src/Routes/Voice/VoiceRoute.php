@@ -51,11 +51,6 @@ class VoiceRoute extends BaseRoute
         //throw new SwissechoException('Notification: Invalid sms phone number');
     }
 
-    protected function getDefaultPlace()
-    {
-        $this->defaultPlace = array_key_first($this->config['routes_options'][$this->getRoute()]['places']);
-    }
-
     protected function pushToGateway($notifiable = null)
     {
         if(!$this->msgBuilder->to) {

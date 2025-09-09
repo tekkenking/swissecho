@@ -1,22 +1,23 @@
 <?php
 
-namespace Tekkenking\Swissecho\Routes\Sms;
+namespace Tekkenking\Swissecho\Routes\Whatsapp;
 
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 use Tekkenking\Swissecho\Routes\BaseRoute;
 use Tekkenking\Swissecho\SwissechoException;
 
-class SmsRoute extends BaseRoute
+class WhatsappRoute extends BaseRoute
 {
 
 
     /**
-     * @return SmsRoute
+     * @return WhatsappRoute
      * @throws SwissechoException
      */
     public function send(): static
     {
-        $this->msgBuilder = $this->notification->viaSms($this->notifiable);
+        $this->msgBuilder = $this->notification->viaWhatsapp($this->notifiable);
         $this->msgBuilder->to($this->prepareTo());
         $this->msgBuilder->sender($this->prepareSender());
         $this->setPlace();
@@ -41,7 +42,6 @@ class SmsRoute extends BaseRoute
     }
 
     /**
-     * @param $notifiable
      * @return mixed
      * @throws SwissechoException
      */
@@ -61,12 +61,11 @@ class SmsRoute extends BaseRoute
         }
 
         return $this->msgBuilder->to;
-
-        //throw new SwissechoException('Notification: Invalid sms phone number');
     }
 
     /**
      * Get the alphanumeric sender.
+     *
      * @return mixed
      */
     protected function prepareSender(): mixed
@@ -74,6 +73,9 @@ class SmsRoute extends BaseRoute
         if(!$this->msgBuilder->sender ) {
 
             if ($this->notifiable
+                && method_exists($this->notifiable, 'routeNotificationWhatsappSender')) {
+                return $this->notifiable->routeNotificationWhatsappSender();
+            } elseif ($this->notifiable
                 && method_exists($this->notifiable, 'routeNotificationSmsSender')) {
                 return $this->notifiable->routeNotificationSmsSender();
             }
@@ -87,7 +89,7 @@ class SmsRoute extends BaseRoute
     protected function pushToGateway()
     {
         if(!$this->msgBuilder->to) {
-            throw new SwissechoException('Notification: Invalid sms phone number');
+            throw new SwissechoException('Notification: Invalid whatsapp phone number');
         }
 
         $this->msgBuilder->to($this->prepTo($this->msgBuilder->to, $this->placeConfig['phonecode']));

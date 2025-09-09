@@ -1,31 +1,31 @@
 <?php
 
-namespace Tekkenking\Swissecho\Routes\Sms\Gateways\Termii;
+namespace Tekkenking\Swissecho\Routes\Whatsapp\Gateways\Kudisms;
 
 use Tekkenking\Swissecho\Routes\Sms\Gateways\BaseGateway;
 
-class Termii extends BaseGateway
+class KudismsWhatsapp extends BaseGateway
 {
 
     /**
      * @return string
      */
-    public function init(): string
+    public function init(): array
     {
         $data = [
-            "api_key"   => $this->config['auth']['api_key'],
-            "channel"   => $this->config['channel'],
-            "to"        => $this->to,
-            "from"      => $this->sender,
-            "sms"       => $this->body,
-            "type"      => "plain"
+            "token"             => $this->config['auth']['api_key'],
+            "template_code"     => '2147483647',
+            "recipient"         => $this->to[0],
+            //"from"      => $this->sender,
+            "parameters"        => $this->body,
         ];
 
-        return json_encode($data);
+        return $data;
     }
 
     public function send($data): \CurlHandle|bool
     {
+        //dd($data);
         $curl = curl_init();
         curl_setopt_array($curl, array(
             CURLOPT_URL => $this->config['url'],
@@ -36,9 +36,9 @@ class Termii extends BaseGateway
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => "POST",
-            CURLOPT_POSTFIELDS => $data,
+            CURLOPT_POSTFIELDS => http_build_query($data), // encodes it correctly
             CURLOPT_HTTPHEADER => array(
-                "Content-Type: application/json"
+                "Content-Type: application/x-www-form-urlencoded"
             ),
         ));
 

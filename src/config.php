@@ -136,7 +136,7 @@ return [
 
         'whatsapp'  =>  [
 
-            'gateway'   => env('SWISSECHO_ROUTE_GATEWAY', 'kudisms'),
+            //'gateway'   => env('SWISSECHO_ROUTE_GATEWAY', 'kudisms'),
 
             'gateway_options'  =>  [
                 'kudisms'    =>  [
@@ -151,8 +151,8 @@ return [
 
             'places'    =>  [
                 'nga'   =>  [
-                    'phonecode' =>  '+234',
-                    'gateway'   =>  'kudisms'
+                    'gateway'   =>  'kudisms',
+                    'phonecode' =>  '+234'
                 ]
             ]
 

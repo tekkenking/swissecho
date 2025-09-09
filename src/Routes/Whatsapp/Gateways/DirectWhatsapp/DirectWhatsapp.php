@@ -1,10 +1,10 @@
 <?php
 
-namespace Tekkenking\Swissecho\Routes\Sms\Gateways\Whatsapp;
+namespace Tekkenking\Swissecho\Routes\Whatsapp\Gateways\DirectWhatsapp;
 
 use Tekkenking\Swissecho\Routes\Sms\Gateways\BaseGateway;
 
-class Whatsapp extends BaseGateway
+class DirectWhatsapp extends BaseGateway
 {
 
     /**
