@@ -51,24 +51,13 @@ abstract class BaseGateway
     }
 
     /**
-     * @param $phoneNm
-     * @return array
-     */
-    protected function convertPhoneNumberToArray($phoneNm): array
-    {
-        return (!is_array($phoneNm))
-            ? preg_split('/\s*,\s*/', trim($phoneNm))
-            : $phoneNm;
-    }
-
-    /**
      * @return void
      */
     public function boot(): void
     {
         $ch = $this->send($this->init());
         $this->execCurl($ch);
-        dd($this->getServerResponse());
+        //$this->getServerResponse();
     }
 
     /**

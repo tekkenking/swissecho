@@ -157,9 +157,7 @@ abstract class BaseRoute
 
     protected function prepTo($to, $phonecode): array
     {
-        if(!is_array($to)) {
-            $to = explode(',', $to);
-        }
+        $to = convertPhoneNumberToArray($to);
 
         $toArr = [];
         foreach ($to ?? [] as $number) {
