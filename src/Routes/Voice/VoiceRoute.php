@@ -11,7 +11,7 @@ class VoiceRoute extends BaseRoute
 {
 
 
-    public function send($notifiable, Notification $notification): static
+    public function sendViaNotification(): static
     {
         $this->msgBuilder = $notification->toVoice($notifiable);
         $this->msgBuilder->to($this->prepareTo($notifiable));

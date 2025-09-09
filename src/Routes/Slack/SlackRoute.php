@@ -8,7 +8,7 @@ use Tekkenking\Swissecho\Routes\BaseRoute;
 class SlackRoute extends BaseRoute
 {
 
-    public function send(): static
+    public function sendViaNotification(): static
     {
         // TODO: Implement send() method.
     }

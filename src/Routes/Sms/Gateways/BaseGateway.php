@@ -2,62 +2,31 @@
 
 namespace Tekkenking\Swissecho\Routes\Sms\Gateways;
 
+use Tekkenking\Swissecho\SwissechoGatewayTrait;
+use Tekkenking\Swissecho\SwissechoMessage;
+
 abstract class BaseGateway
 {
-    /**
-     * @var array
-     */
-    public array $to;
-
-    /**
-     * @var string|mixed
-     */
-    public string $sender;
-
-    /**
-     * @var string
-     */
-    public string $body;
-
-    /**
-     * @var array
-     */
-    private array $setServerResponse;
-
-    /**
-     * @var array
-     */
-    private array $payload;
-
-    /**
-     * @var array
-     */
-    public array $config;
+    use SwissechoGatewayTrait;
 
     /**
      * @param $gateway_config
-     * @param $payload
+     * @param SwissechoMessage $msgBuilder
      */
-    public function __construct($gateway_config, $payload)
+    public function __construct($gateway_config, SwissechoMessage $msgBuilder)
     {
-        $this->payload          = $payload;
-        //$this->payload['to']    = $this->convertPhoneNumberToArray($this->payload['to']);
+        $this->msgBuilder = $msgBuilder;
 
+        $this->payload = $this->msgBuilder->get();
         //For the sms class
-        $this->to = $this->payload['to'];
-        $this->sender = $this->payload['sender'];
-        $this->body = $this->payload['message'];
+        $this->to       = $this->payload['to'];
+        $this->sender   = $this->payload['sender'];
+        $this->body     = $this->payload['message'];
         $this->config   = $gateway_config;
-    }
 
-    /**
-     * @return void
-     */
-    public function boot(): void
-    {
-        $ch = $this->send($this->init());
-        $this->execCurl($ch);
-        //$this->getServerResponse();
+        if(isset($this->payload['identifier'])) {
+            $this->identifier = $this->payload['identifier'];
+        }
     }
 
     /**
@@ -66,67 +35,5 @@ abstract class BaseGateway
     abstract public function init(): mixed;
 
     abstract public function send($data);
-
-    /**
-     * @param $ch
-     * @return array|bool|string|void
-     */
-    protected function execCurl($ch)
-    {
-        try {
-            //get response
-            $output = curl_exec($ch);
-
-            //Print error if any
-            $isError = false;
-            $errorMessage = '';
-            if (curl_errno($ch)) {
-                $isError = true;
-                $errorMessage = curl_error($ch);
-            }
-            curl_close($ch);
-
-            if($isError){
-                $data = ['error' => true , 'message' => $errorMessage];
-            }else{
-                $data = $output;
-            }
-
-            $status = !$isError;
-            $this->setServerResponse($status, $data);
-
-            return $data;
-
-        } catch (\Exception $exception) {
-            $this->setServerResponse(false, $exception->getMessage());
-        }
-    }
-
-    /**
-     * @param bool $status
-     * @param $response
-     * @return void
-     */
-    public function setServerResponse(
-        bool $status,
-             $response
-    ): void
-    {
-        $this->setServerResponse = [
-            'status'    =>  $status,
-            'response'  =>  $response,
-            'from'      =>  $this->sender,
-            'to'        =>  $this->to,
-            'body'      =>  $this->body
-        ];
-    }
-
-    /**
-     * @return array
-     */
-    public function getServerResponse(): array
-    {
-        return $this->setServerResponse;
-    }
 
 }

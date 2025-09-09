@@ -25,7 +25,6 @@ class KudismsWhatsapp extends BaseGateway
 
     public function send($data): \CurlHandle|bool
     {
-        //dd($data);
         $curl = curl_init();
         curl_setopt_array($curl, array(
             CURLOPT_URL => $this->config['url'],

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tekkenking\Swissecho\Routes;
 
 use Illuminate\Notifications\Notification;
+use Tekkenking\Swissecho\SwissechoException;
+use Tekkenking\Swissecho\SwissechoMessage;
 
 abstract class BaseRoute
 {
@@ -26,7 +28,7 @@ abstract class BaseRoute
     /**
      * @var mixed
      */
-    protected mixed $msgBuilder;
+    protected SwissechoMessage $msgBuilder;
 
     /**
      * @var array
@@ -97,7 +99,6 @@ abstract class BaseRoute
         $this->gateway = $gateway ?? $this->getDefaultGateway();
 
         $this->loadGatewayConfig();
-
         return $this;
     }
 
@@ -123,6 +124,8 @@ abstract class BaseRoute
         } else {
             $this->place = array_key_first($this->config['routes_options'][$this->route]['places']);
         }
+
+        $this->msgBuilder->place = $this->place;
     }
 
     protected function setPlaceConfifg(): void
@@ -155,20 +158,89 @@ abstract class BaseRoute
         $this->directSend($routeBuilder);
     }
 
-    protected function prepTo($to, $phonecode): array
+    public function setIdentifier(): void
     {
-        $to = convertPhoneNumberToArray($to);
+        if(isset($this->msgBuilder->identifier)) {
+            return;
+        }
 
+        if(isset($this->notifiable)) {
+            $this->msgBuilder->identifier($this->notifiable);
+        }
+    }
+
+    protected function msgBuilderInitForSendViaNotification($viaMethod): void
+    {
+        $this->msgBuilder = $viaMethod;
+        $this->msgBuilder->to($this->prepareTo());
+        $this->msgBuilder->sender($this->prepareSender());
+        $this->setPlace();
+        $this->setPlaceConfifg();
+        $this->setIdentifier();
+        $this->msgBuilder->route($this->route);
+        $this->msgBuilder->gateway($this->gateway);
+
+        $this->pushToGateway();
+    }
+
+    protected function msgBuilderInitForDirectSend($routeBuilder): void
+    {
+        $this->msgBuilder = $routeBuilder;
+        $this->msgBuilder->sender($this->prepareSender());
+        $this->setPlace();
+        $this->setPlaceConfifg();
+        $this->msgBuilder->route($this->route);
+        $this->msgBuilder->gateway($this->gateway);
+        $this->pushToGateway();
+    }
+
+    protected function pushToGateway()
+    {
+        if(!$this->msgBuilder->to) {
+            throw new SwissechoException('Notification: Invalid phone number');
+        }
+
+        $this->msgBuilder->to($this->addPhoneCodeToPhoneNumberArr($this->convertPhoneNumberToArray($this->msgBuilder->to), $this->placeConfig['phonecode']));
+        $gatewayConfig = $this->gatewayConfig();
+        $gatewayClass = $gatewayConfig['class'];
+
+        (new $gatewayClass($gatewayConfig, $this->msgBuilder))->boot();
+    }
+
+    protected function prepareTo(): mixed
+    {
+        if(!$this->msgBuilder->to) {
+
+            // THIS IS FROM DB TABLE
+            if (isset($this->notifiable->phone)) {
+                return $this->notifiable->phone;
+            }
+
+            // THIS IS FROM THE CURRENT MODEL
+            if (method_exists($this->notifiable, 'routeNotificationPhone')) {
+                return $this->notifiable->routeNotificationPhone();
+            }
+        }
+
+        return $this->msgBuilder->to;
+    }
+
+    protected function convertPhoneNumberToArray($to): array
+    {
+        return convertPhoneNumberToArray($to);
+    }
+
+    protected function addPhoneCodeToPhoneNumberArr(array $tos, $phonecode): array
+    {
         $toArr = [];
-        foreach ($to ?? [] as $number) {
+        foreach ($tos ?? [] as $number) {
             $toArr[] = addCountryCodeToPhoneNumber($number, $phonecode);
         }
 
         return $toArr;
     }
 
-
-    abstract public function send(): static;
+    abstract public function sendViaNotification(): static;
 
     abstract public function directSend($routeBuilder): static;
 

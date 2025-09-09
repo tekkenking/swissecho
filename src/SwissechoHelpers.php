@@ -11,19 +11,22 @@ if(! function_exists('addCountryCodeToPhoneNumber')) {
     function addCountryCodeToPhoneNumber($phone, $countryCode)
     {
 
+        //If the country code starts with +, remove the +
+        if (str_starts_with($countryCode, '+')) {
+            $countryCode = substr($countryCode, 1);
+        }
+
+        if (str_starts_with($phone, '+')) {
+            $phone = substr($phone, 1);
+        }
+
+        if (str_starts_with($phone, '0')) {
+            $phone = substr($phone, 1);
+        }
+
         //If phone number starts with country code without +, return it
         if (str_starts_with($phone, $countryCode)) {
             return $phone;
-        }
-
-        //If the phone number starts with +country code, remove the + and return it
-        if (str_starts_with($phone, '+' . $countryCode)) {
-            return substr($phone, 1);
-        }
-
-        //If phone number starts with 0, remove it
-        if (str_starts_with($phone, '0')) {
-            $phone = substr($phone, 1);
         }
 
         return $countryCode . $phone;
