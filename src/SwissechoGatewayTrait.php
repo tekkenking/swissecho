@@ -38,6 +38,8 @@ trait SwissechoGatewayTrait
      */
     public array $config;
 
+    protected array $swissecho_config;
+
     private $responsePayload;
 
     /**
@@ -56,6 +58,7 @@ trait SwissechoGatewayTrait
      */
     public function boot(): self
     {
+        $this->swissecho_config = config('swissecho');
         $this->processDependencies();
         $this->requestPayload = $this->init();
         $ch = $this->send($this->requestPayload);
@@ -104,8 +107,12 @@ trait SwissechoGatewayTrait
      * @param $ch
      * @return mixed
      */
-    protected function hookBeforeExecCurl($ch)
+    protected function hookBeforeExecCurl($ch): mixed
     {
+        if($this->isMockActive()) {
+            $this->startMock();
+            return null;
+        }
         return $ch;
     }
 
@@ -116,6 +123,23 @@ trait SwissechoGatewayTrait
     protected function hookAfterExecCurl($output): mixed
     {
         return $output;
+    }
+
+    /**
+     * @return bool
+     */
+    private function isMockActive(): bool
+    {
+        return !$this->swissecho_config['live'];
+    }
+
+    /**
+     * @return void
+     */
+    private function startMock() : void
+    {
+        $mockClass = new SwissechoMock();
+        $mockClass->mockSend($this->config['class'], $this->msgBuilder);
     }
 
     /**
@@ -133,26 +157,34 @@ trait SwissechoGatewayTrait
             //get response
             $ch = $this->hookBeforeExecCurl($ch);
 
-            $output = $this->responsePayload = curl_exec($ch);
+            if($ch === null) {
+                //Meaning we are running mock mode
+                $status = true;
+                $data = ['message' => 'Mock mode enabled. No request was sent to gateway.'];
+            } else {
+                //dd('should not be here');
+                $output = $this->responsePayload = curl_exec($ch);
 
-            //Print error if any
-            $isError = false;
-            $errorMessage = '';
-            if (curl_errno($ch)) {
-                $isError = true;
-                $errorMessage = curl_error($ch);
+                //Print error if any
+                $isError = false;
+                $errorMessage = '';
+                if (curl_errno($ch)) {
+                    $isError = true;
+                    $errorMessage = curl_error($ch);
+                }
+                curl_close($ch);
+
+                $output = $this->hookAfterExecCurl($output);
+
+                if($isError){
+                    $data = ['error' => true , 'message' => $errorMessage];
+                }else{
+                    $data = $output;
+                }
+
+                $status = !$isError;
             }
-            curl_close($ch);
 
-            $output = $this->hookAfterExecCurl($output);
-
-            if($isError){
-                $data = ['error' => true , 'message' => $errorMessage];
-            }else{
-                $data = $output;
-            }
-
-            $status = !$isError;
             $this->formatResponse($status, $data);
 
             AfterSend::dispatch($this->insight(), $this->getFormattedResponse(), $this->identifier);

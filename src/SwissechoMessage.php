@@ -19,6 +19,7 @@ class SwissechoMessage
     public $place;
     public $gateway;
     public $identifier = null;
+    public $phonecode;
     public $route;
 
     /**
@@ -73,6 +74,12 @@ class SwissechoMessage
             $this->to = $this->data['to'];
         }
 
+        return $this;
+    }
+
+    public function phonecode($code): SwissechoMessage
+    {
+        $this->phonecode = $this->data['phonecode'] = $code;
         return $this;
     }
 
