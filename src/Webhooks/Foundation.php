@@ -1,21 +1,22 @@
 <?php
 
-namespace Tekkenking\Swissecho\Urls;
+declare(strict_types=1);
+
+namespace Tekkenking\Swissecho\Webhooks;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Response;
 
 class Foundation {
 
-    protected $config;
+    protected mixed $config;
 
     /**
-     * Summary of handle
+     * Summary of a handle
      * @param string $type
      * @param string $key
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @param Request $request
+     * @return JsonResponse
      */
     public function handle(string $type, string $key, Request $request): JsonResponse
     {

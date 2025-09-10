@@ -1,6 +1,6 @@
 <?php
 
-namespace Tekkenking\Swissecho\Routes\Sms\Gateways;
+namespace Tekkenking\Swissecho\Routes\Whatsapp\Gateways;
 
 use Tekkenking\Swissecho\SwissechoGatewayTrait;
 use Tekkenking\Swissecho\SwissechoMessage;
@@ -19,14 +19,10 @@ abstract class BaseGateway
 
         $this->payload = $this->msgBuilder->get();
         //For the sms class
-        $this->to       = $this->payload['to'];
-        $this->sender   = $this->payload['sender'];
-        $this->body     = $this->payload['message'];
+        $this->to = $this->payload['to'];
+        $this->sender = $this->payload['sender'];
+        $this->body = $this->payload['message'];
         $this->config   = $gateway_config;
-
-        if(isset($this->payload['identifier'])) {
-            $this->identifier = $this->payload['identifier'];
-        }
     }
 
     /**

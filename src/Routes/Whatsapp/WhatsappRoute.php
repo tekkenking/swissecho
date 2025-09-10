@@ -1,20 +1,23 @@
 <?php
 
-namespace Tekkenking\Swissecho\Routes\Sms;
+namespace Tekkenking\Swissecho\Routes\Whatsapp;
 
+use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 use Tekkenking\Swissecho\Routes\BaseRoute;
 use Tekkenking\Swissecho\SwissechoException;
 
-class SmsRoute extends BaseRoute
+class WhatsappRoute extends BaseRoute
 {
 
+
     /**
-     * @return SmsRoute
+     * @return WhatsappRoute
      * @throws SwissechoException
      */
     public function sendViaNotification(): static
     {
-        $this->msgBuilderInitForSendViaNotification($this->notification->viaSms($this->notifiable));
+        $this->msgBuilderInitForSendViaNotification($this->notification->viaWhatsapp($this->notifiable));
         return $this;
     }
 
@@ -30,7 +33,13 @@ class SmsRoute extends BaseRoute
     }
 
     /**
+     * @return mixed
+     * @throws SwissechoException
+     */
+
+    /**
      * Get the alphanumeric sender.
+     *
      * @return mixed
      */
     protected function prepareSender(): mixed
@@ -38,6 +47,9 @@ class SmsRoute extends BaseRoute
         if(!$this->msgBuilder->sender ) {
 
             if ($this->notifiable
+                && method_exists($this->notifiable, 'routeNotificationWhatsappSender')) {
+                return $this->notifiable->routeNotificationWhatsappSender();
+            } elseif ($this->notifiable
                 && method_exists($this->notifiable, 'routeNotificationSmsSender')) {
                 return $this->notifiable->routeNotificationSmsSender();
             }
@@ -47,4 +59,5 @@ class SmsRoute extends BaseRoute
 
         return $this->msgBuilder->sender;
     }
+
 }

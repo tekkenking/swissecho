@@ -16,6 +16,6 @@ class AfterSend
      * Create a new event instance.
      */
     public function __construct(
-        public array $insightPayload, public $rawResponsePayload, public $identifier
+        public array $insightPayload, public $formattedResponse, public $identifier
     ) {}
 }

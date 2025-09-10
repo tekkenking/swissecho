@@ -5,14 +5,10 @@ declare(strict_types=1);
 namespace Tekkenking\Swissecho\Routes;
 
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
+use Tekkenking\Swissecho\SwissechoException;
 use Tekkenking\Swissecho\SwissechoMessage;
 
-abstract class BaseRoute implements BaseRouteInterface
+abstract class BaseRoute
 {
     /**
      * @var  array
@@ -34,18 +30,23 @@ abstract class BaseRoute implements BaseRouteInterface
      */
     protected SwissechoMessage $msgBuilder;
 
-    protected $defaultPlace;
-
     /**
      * @var array
      */
     private array $gatewayConfig;
 
-    protected $mockedNotifiable;
+    /**
+     * @var mixed
+     */
+    protected string $defaultPlace;
 
-    abstract public function send($notifiable, Notification $notification);
+    protected string $place;
 
-    abstract public function directSend($routeBuilder);
+    protected array $placeConfig;
+
+    protected $notifiable;
+
+    protected Notification $notification;
 
     /**
      * @return void
@@ -67,22 +68,13 @@ abstract class BaseRoute implements BaseRouteInterface
     public function route(string $route): static
     {
         $this->loadConfig();
-
-        $this->route = $route ?? $this->getDefaultRoute();
+        $this->route = strtolower($route ?? $this->getDefaultRoute());
         return $this;
-    }
-
-
-    protected function getRoute(): string
-    {
-        return strtolower($this->route);
     }
 
     protected function getDefaultGateway()
     {
-        return reset($this->config['routes_options'][$this->getRoute()]['places'])['gateway'];
-        //dd($places);
-        //return $this->config['routes_options'][$this->getRoute()]['gateway'];
+        return array_key_first($this->config['routes_options'][$this->route]['gateway_options']);
     }
 
     protected function getGateway(): string
@@ -95,7 +87,7 @@ abstract class BaseRoute implements BaseRouteInterface
      */
     private function loadGatewayConfig(): void
     {
-        $this->gatewayConfig = $this->config['routes_options'][$this->getRoute()]['gateway_options'][$this->getGateway()];
+        $this->gatewayConfig = $this->config['routes_options'][$this->route]['gateway_options'][$this->getGateway()];
     }
 
     /**
@@ -107,7 +99,6 @@ abstract class BaseRoute implements BaseRouteInterface
         $this->gateway = $gateway ?? $this->getDefaultGateway();
 
         $this->loadGatewayConfig();
-
         return $this;
     }
 
@@ -119,127 +110,138 @@ abstract class BaseRoute implements BaseRouteInterface
         return $this->gatewayConfig;
     }
 
-    /**
-     * @return mixed
-     */
-    protected function gatewaySender(): mixed
+    protected function gatewaySender()
     {
-        return (isset($this->gatewayConfig()['sender']))
-            ? $this->gatewayConfig()['sender']
-            : $this->config['sender'];
+        return $this->gatewayConfig()['sender'] ?? 'null';
+    }
+
+    protected function setPlace(): void
+    {
+        if ($this->msgBuilder->place) {
+            $this->place = $this->msgBuilder->place;
+        } else if($this->notifiable && method_exists($this->notifiable, 'routeNotificationPlace')) {
+            $this->place = strtolower($this->notifiable->routeNotificationPlace());
+        } else {
+            $this->place = array_key_first($this->config['routes_options'][$this->route]['places']);
+        }
+
+        $this->msgBuilder->place = $this->place;
+    }
+
+    protected function setPlaceConfifg(): void
+    {
+        $this->placeConfig = $this->config['routes_options'][$this->route]['places'][$this->place];
     }
 
     /**
      * @param $notifiable
      * @param Notification $notification
+     * @return void
      */
-    public function bootByNotification($notifiable, Notification $notification)
+    public function bootByNotification($notifiable, Notification $notification): void
     {
-        return $this->send($notifiable, $notification);
+        $this->notifiable = $notifiable;
+        $this->notification = $notification;
+        $this->send();
     }
 
     /**
      * @param $routeBuilder
+     * @return void
      */
-    public function bootByDirect($routeBuilder)
+    public function bootByDirect($routeBuilder): void
     {
         $this->loadConfig();
         if($routeBuilder->gateway) {
             $this->gateway($routeBuilder->gateway);
         }
-
-        return $this->directSend($routeBuilder);
+        $this->directSend($routeBuilder);
     }
 
-    public function setMockedNotifiable($mocked)
+    public function setIdentifier(): void
     {
-        $this->mockedNotifiable = $mocked;
-    }
-
-    private function mockBuildInfo($gatewayConfig, $msgBuilder)
-    {
-        $build = '';
-        if(App::environment('local')) {
-            //dump($msgBuilder);
-            //dd($gatewayConfig);
-            $build  = "From: ". $msgBuilder->from."\n";
-            $build .= "To: ". implode(',', $msgBuilder->to)."\n";
-            $build .= "Message: ". $msgBuilder->message . "\n";
-            $build .= "============================================\n";
-            $build .= "BUILD INFO: (Not included in the actual BODY):\n";
-            $build .= "============================================\n";
-            $build .= "Country (for ".$this->config['route']." route): ". $msgBuilder->place ."\n";
-            $build .= "PhoneCode (for ".$this->config['route']." route): ". $msgBuilder->phonecode ."\n";
-            $build .= "Route: ". $this->config['route'] ."\n";
-            $build .= "Gateway: ". $msgBuilder->gateway ."\n";
-            $build .= "Gateway Class: ". $gatewayConfig['class'] ."\n";
+        if(isset($this->msgBuilder->identifier)) {
+            return;
         }
 
-        return $build;
+        if(isset($this->notifiable)) {
+            $this->msgBuilder->identifier($this->notifiable);
+        }
     }
 
-    public function mockSend($gatewayConfig, $msgBuilder)
+    protected function msgBuilderInitForSendViaNotification($viaMethod): void
     {
-        $buildMock = $this->mockBuildInfo($gatewayConfig, $msgBuilder);
-        $mockMethod = 'mockBy'.Str::studly($this->config['fake']);
+        $this->msgBuilder = $viaMethod;
+        $this->msgBuilder->to($this->prepareTo());
+        $this->msgBuilder->sender($this->prepareSender());
+        $this->setPlace();
+        $this->setPlaceConfifg();
+        $this->setIdentifier();
+        $this->msgBuilder->route($this->route);
+        $this->msgBuilder->gateway($this->gateway);
 
-        if($buildMock) {
-            $this->$mockMethod($buildMock, $gatewayConfig, $msgBuilder);
-            return [
-                'status'    =>  true,
-                'response'  =>  [
-                    'gateway'   =>  $msgBuilder->gateway,
-                    'message'   =>  $buildMock
-                ],
-                'from'      =>  $msgBuilder->from,
-                'to'        =>  $msgBuilder->to,
-                'body'      =>  $msgBuilder->message
-            ];
+        $this->pushToGateway();
+    }
+
+    protected function msgBuilderInitForDirectSend($routeBuilder): void
+    {
+        $this->msgBuilder = $routeBuilder;
+        $this->msgBuilder->sender($this->prepareSender());
+        $this->setPlace();
+        $this->setPlaceConfifg();
+        $this->msgBuilder->route($this->route);
+        $this->msgBuilder->gateway($this->gateway);
+        $this->pushToGateway();
+    }
+
+    protected function pushToGateway()
+    {
+        if(!$this->msgBuilder->to) {
+            throw new SwissechoException('Notification: Invalid phone number');
         }
 
-        return [];
+        $this->msgBuilder->to($this->addPhoneCodeToPhoneNumberArr($this->convertPhoneNumberToArray($this->msgBuilder->to), $this->placeConfig['phonecode']));
+        $gatewayConfig = $this->gatewayConfig();
+        $gatewayClass = $gatewayConfig['class'];
+
+        (new $gatewayClass($gatewayConfig, $this->msgBuilder))->boot();
     }
 
-    public function mockByMail($buildMock, $gatewayConfig, $msgBuilder)
+    protected function prepareTo(): mixed
     {
-        Mail::raw($buildMock, function($message) use ($msgBuilder) {
-            $message->to([
-                $this->config['fake_mail']
-            ])->subject('Mock: ['.implode(',', $msgBuilder->to).']');
-        });
-    }
+        if(!$this->msgBuilder->to) {
 
-    public function mockByLog($buildMock, $gatewayConfig, $msgBuilder)
-    {
-        $this->_prepareLogFile();
-        Log::channel('swissecho_mock')
-            ->info("Mock: [".implode(',', $msgBuilder->to)."] \n".$buildMock. "\n");
-    }
+            // THIS IS FROM DB TABLE
+            if (isset($this->notifiable->phone)) {
+                return $this->notifiable->phone;
+            }
 
-    /*
-     * @return void
-     */
-    private function _prepareLogFile(): void
-    {
-        $hasLogFile = config('logging.channels.swissecho_mock', null);
-
-        if(!$hasLogFile) {
-
-            $existingConfig = config('logging.channels');
-            $existingConfig['swissecho_mock'] =  [
-                'driver' => 'single',
-                'path' => storage_path('logs/swissecho_mock.log'),
-                'level' => 'debug',
-            ];
-
-            config(['logging.channels' => $existingConfig]);
+            // THIS IS FROM THE CURRENT MODEL
+            if (method_exists($this->notifiable, 'routeNotificationPhone')) {
+                return $this->notifiable->routeNotificationPhone();
+            }
         }
 
-        $file = config('logging.channels.swissecho_mock.path');
-        if(!File::exists($file)) {
-            File::put($file, '');
+        return $this->msgBuilder->to;
+    }
+
+    protected function convertPhoneNumberToArray($to): array
+    {
+        return convertPhoneNumberToArray($to);
+    }
+
+    protected function addPhoneCodeToPhoneNumberArr(array $tos, $phonecode): array
+    {
+        $toArr = [];
+        foreach ($tos ?? [] as $number) {
+            $toArr[] = addCountryCodeToPhoneNumber($number, $phonecode);
         }
 
+        return $toArr;
     }
+
+    abstract public function sendViaNotification(): static;
+
+    abstract public function directSend($routeBuilder): static;
 
 }

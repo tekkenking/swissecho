@@ -8,10 +8,9 @@ use Tekkenking\Swissecho\Routes\BaseRoute;
 class SlackRoute extends BaseRoute
 {
 
-    public function send($notifiable, Notification $notification): static
+    public function sendViaNotification(): static
     {
         // TODO: Implement send() method.
-        return $this;
     }
 
     public function directSend($routeBuilder): static

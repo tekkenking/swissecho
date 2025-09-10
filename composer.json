@@ -29,7 +29,5 @@
                 "Swissecho": "Tekkenking\\Swissecho\\SwissechoFacade"
             }
         }
-    },
-    "minimum-stability": "dev",
-    "prefer-stable": false
+    }
 }

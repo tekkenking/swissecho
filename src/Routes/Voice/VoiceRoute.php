@@ -11,7 +11,7 @@ class VoiceRoute extends BaseRoute
 {
 
 
-    public function send($notifiable, Notification $notification): static
+    public function sendViaNotification(): static
     {
         $this->msgBuilder = $notification->toVoice($notifiable);
         $this->msgBuilder->to($this->prepareTo($notifiable));
@@ -49,11 +49,6 @@ class VoiceRoute extends BaseRoute
         return $this->msgBuilder->to;
 
         //throw new SwissechoException('Notification: Invalid sms phone number');
-    }
-
-    protected function getDefaultPlace()
-    {
-        $this->defaultPlace = array_key_first($this->config['routes_options'][$this->getRoute()]['places']);
     }
 
     protected function pushToGateway($notifiable = null)

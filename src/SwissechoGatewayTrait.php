@@ -38,11 +38,6 @@ trait SwissechoGatewayTrait
      */
     public array $config;
 
-    /**
-     * @var array
-     */
-    private $serverResponse;
-
     private $responsePayload;
 
     /**
@@ -50,18 +45,21 @@ trait SwissechoGatewayTrait
      */
     private $requestPayload;
 
+    protected SwissechoMessage $msgBuilder;
+    /**
+     * @var array
+     */
+    private array $formattedResponse;
+
     /**
      * @return void
      */
     public function boot(): self
     {
-        //dump($this->init());
         $this->processDependencies();
         $this->requestPayload = $this->init();
         $ch = $this->send($this->requestPayload);
         $this->execCurl($ch ?? null);
-        //dd($this->getServerResponse());
-
         return $this;
     }
 
@@ -84,9 +82,11 @@ trait SwissechoGatewayTrait
      */
     protected function processDependencies(): void
     {
+        if(!method_exists($this, 'checkDependencies')) {
+            return;
+        }
 
         $dependenciesArr = $this->checkDependencies();
-
         foreach ($dependenciesArr ?? [] as $depArr) {
             $className = $depArr[0];
             $composerRequire = $depArr[1];
@@ -153,15 +153,15 @@ trait SwissechoGatewayTrait
             }
 
             $status = !$isError;
-            $this->setServerResponse($status, $data);
+            $this->formatResponse($status, $data);
 
-            AfterSend::dispatch($this->insight(), $data, $this->identifier);
+            AfterSend::dispatch($this->insight(), $this->getFormattedResponse(), $this->identifier);
 
             return $data;
 
         } catch (\Exception $exception) {
-            $this->setServerResponse(false, $exception->getMessage());
-            AfterSend::dispatch($this->insight(), $data, $this->identifier);
+            $this->formatResponse(false, $exception->getMessage());
+            AfterSend::dispatch($this->insight(), $this->getFormattedResponse(), $this->identifier);
         }
     }
 
@@ -169,11 +169,25 @@ trait SwissechoGatewayTrait
     /**
      * @return array
      */
-    public function getServerResponse(): array
+    public function getFormattedResponse(): array
     {
-        return $this->serverResponse;
+        return $this->formattedResponse;
     }
 
+    public function formatResponse( bool $status, $response): void
+    {
+        $this->formattedResponse = [
+            'status'    =>  $status,
+            'partner_response'  =>  $response,
+            'from'      =>  $this->sender,
+            'to'        =>  $this->to,
+            'body'      =>  $this->body,
+            'route'     =>  $this->msgBuilder->route,
+            'gateway'   =>  $this->msgBuilder->gateway,
+            'identifier'=>  $this->msgBuilder->identifier,
+            'timestamp' =>  now()->toDateTimeString()
+        ];
+    }
 
     /**
      * Summary of insight

@@ -7,35 +7,57 @@ if(! function_exists('swissecho')) {
     }
 }
 
-if (!function_exists('add_country_code')) {
-    function add_country_code($phone, $countrycode) {
-        $phone = trim($phone);
+if(! function_exists('addCountryCodeToPhoneNumber')) {
+    function addCountryCodeToPhoneNumber($phone, $countryCode)
+    {
 
-        //Is leading zero?
-        if (Str::startsWith($phone, '0')) $phone = Str::replaceFirst('0', '', $phone);
+        //If the country code starts with +, remove the +
+        if (str_starts_with($countryCode, '+')) {
+            $countryCode = substr($countryCode, 1);
+        }
 
-        //Does the number start with +
-        if (Str::startsWith($phone, '+')) return $phone;
+        if (str_starts_with($phone, '+')) {
+            $phone = substr($phone, 1);
+        }
 
-        return '+' . $countrycode . $phone;
+        if (str_starts_with($phone, '0')) {
+            $phone = substr($phone, 1);
+        }
+
+        //If phone number starts with country code without +, return it
+        if (str_starts_with($phone, $countryCode)) {
+            return $phone;
+        }
+
+        return $countryCode . $phone;
     }
 }
 
-
-if (!function_exists('remove_country_code')) {
-    function remove_country_code($phone, $countrycode)
+if(! function_exists('removeCountryCodeFromPhoneNumber')) {
+    function removeCountryCodeFromPhoneNumber($phone, $countryCode)
     {
-        $phone = trim($phone);
+        //If phone number starts with country code without +, remove it
+        if (str_starts_with($phone, $countryCode)) {
+            return substr($phone, strlen($countryCode));
+        }
 
-        if (Str::startsWith($phone, '00')) return '0'. Str::replaceFirst('00', '', Str::replaceFirst($countrycode, '', $phone));
+        //If the phone number starts with +country code, remove the + and return it
+        if (str_starts_with($phone, '+' . $countryCode)) {
+            return substr($phone, strlen($countryCode) + 1);
+        }
 
-        //Is leading zero?
-        if (Str::startsWith($phone, '0')) return $phone;
+        return $phone;
+    }
+}
 
-        //Does the number start with +
-        if (Str::startsWith($phone, '+')) return '0'. Str::replaceFirst('+', '', Str::replaceFirst($countrycode, '', $phone));
+if(! function_exists('convertPhoneNumberToArray')) {
+    function convertPhoneNumberToArray($phone)
+    {
+        if (is_array($phone)) {
+            return $phone;
+        }
 
-        return '0'.$phone;
-
+        //Split by comma and trim spaces
+        return array_map('trim', explode(',', $phone));
     }
 }
