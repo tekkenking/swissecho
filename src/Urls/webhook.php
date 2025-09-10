@@ -1,6 +1,6 @@
 <?php
 
-use Tekkenking\Swissecho\Urls\Foundation;
+use Tekkenking\Swissecho\Webhooks\Foundation;
 
 
 //Example url: https://blablad.com/webhook/swissecho/route/sms/termii/kjsdfu923hjhds9893ioe
