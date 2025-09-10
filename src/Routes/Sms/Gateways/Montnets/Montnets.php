@@ -60,7 +60,7 @@ class Montnets extends BaseGateway
      */
     private function encryptedPassword($userid, $pwd, $timestamp): string
     {
-        $uppercaseUserId = strtoupper($userid);
+        $uppercaseUserId = $userid !== null ? strtoupper($userid) : '';
         $fixedString = '00000000';
         $concatenatedString = $uppercaseUserId . $fixedString . $pwd . $timestamp;
 
