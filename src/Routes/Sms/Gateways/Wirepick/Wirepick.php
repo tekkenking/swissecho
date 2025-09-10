@@ -14,10 +14,10 @@ class Wirepick extends BaseGateway
     {
         $url = $this->config['url'];
         $client = $this->config['client'];
-        $password = $this->config['auth']['password'];
+        $password = $this->config['password'];
         $affiliate = $this->config['affliate'];
 
-        $this->body = urlencode($this->body);
+        $this->body = $this->body;
         $mobiles = implode(',', $this->to);
 
         $data = $url."?client=".$client."&password=".$password."&affiliate=".$affiliate."&phone=".$mobiles."&text=".$this->body."&from=".$this->sender;

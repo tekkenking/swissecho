@@ -200,7 +200,9 @@ abstract class BaseRoute
             throw new SwissechoException('Notification: Invalid phone number');
         }
 
-        $this->msgBuilder->to($this->addPhoneCodeToPhoneNumberArr($this->convertPhoneNumberToArray($this->msgBuilder->to), $this->placeConfig['phonecode']));
+        $this->msgBuilder->phonecode($this->placeConfig['phonecode']);
+
+        $this->msgBuilder->to($this->addPhoneCodeToPhoneNumberArr($this->convertPhoneNumberToArray($this->msgBuilder->to), $this->msgBuilder->phonecode));
         $gatewayConfig = $this->gatewayConfig();
         $gatewayClass = $gatewayConfig['class'];
 

@@ -7,6 +7,7 @@ use Tekkenking\Swissecho\Routes\Sms\Gateways\Routemobile\RouteMobile;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Smsbroadcast\SmsBroadCastDotComDotAu;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Termii\Termii;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Tnz\Tnz;
+use Tekkenking\Swissecho\Routes\Sms\Gateways\Wirepick\Wirepick;
 use Tekkenking\Swissecho\Routes\Voice\Gateways\Termii\TermiiVoiceCall;
 use Tekkenking\Swissecho\Routes\Voice\Gateways\Textngxyz\TextngxyzVoiceCall;
 use Tekkenking\Swissecho\Routes\Whatsapp\Gateways\Kudisms\KudismsWhatsapp;
@@ -76,6 +77,13 @@ return [
                         'password'  =>  env('MONTNETS_SMS_PASSWORD'),
                     ]
                 ],
+                'wirepick' => [
+                    'class' => Wirepick::class,
+                    'url' => env('WIREPICK_SMS_URL'),
+                    'client' => env('WIREPICK_SMS_CLIENT'),
+                    'password' => env('WIREPICK_SMS_PASSWORD'),
+                    'affliate' => env('WIREPICK_SMS_AFFLIATE'),
+                ],
                 /*'vonage'    =>  [
                     'class' =>  \App\Libs\Vonage\Sms\Send::class,
                     'auth'  =>  [
@@ -88,6 +96,14 @@ return [
                 'nga'   =>  [
                     'gateway'   => 'nigerianbulksms',
                     'phonecode' =>  '234'
+                ],
+                'gha'   =>  [
+                    'gateway'   => 'wirepick',
+                    'phonecode' =>  '233'
+                ],
+                'ken'   =>  [
+                    'gateway'  => 'wirepick',
+                    'phonecode' => '254'
                 ],
                 'aus'   =>  [
                     'gateway'   => 'smsbroadcast',
