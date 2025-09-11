@@ -14,7 +14,7 @@ class SmsRoute extends BaseRoute
      */
     public function sendViaNotification(): static
     {
-        $this->msgBuilderInitForSendViaNotification($this->notification->viaSms($this->notifiable));
+        $this->msgBuilderInitForSendViaNotification($this->notification->toSms($this->notifiable));
         return $this;
     }
 

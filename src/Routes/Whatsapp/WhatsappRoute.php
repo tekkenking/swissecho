@@ -17,7 +17,7 @@ class WhatsappRoute extends BaseRoute
      */
     public function sendViaNotification(): static
     {
-        $this->msgBuilderInitForSendViaNotification($this->notification->viaWhatsapp($this->notifiable));
+        $this->msgBuilderInitForSendViaNotification($this->notification->toWhatsapp($this->notifiable));
         return $this;
     }
 

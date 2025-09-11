@@ -142,7 +142,7 @@ abstract class BaseRoute
     {
         $this->notifiable = $notifiable;
         $this->notification = $notification;
-        $this->send();
+        $this->sendViaNotification();
     }
 
     /**

@@ -31,8 +31,8 @@ class SwissechoException extends Exception
         Log::debug($this->errorMsg);
     }
 
-    public function render(): string
-    {
-        return $this->errorMsg;
-    }
+    // public function render(): string
+    // {
+    //     return $this->errorMsg;
+    // }
 }
