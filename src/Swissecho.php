@@ -56,6 +56,11 @@ class Swissecho
     {
         $this->notifiable = $notifiable;
         $this->notification = $notification;
+
+        if (method_exists($notification, 'swissechoRoutes')) {
+            $this->vias = $notification->swissechoRoutes($notifiable);
+        }
+        
         $this->makeRoutes();
     }
 
@@ -71,7 +76,7 @@ class Swissecho
             $route= ucfirst($method);
 
             //Prefix with "via"
-            $viaMethod = 'via'.$route;
+            $viaMethod = 'to'.$route;
 
             //Check if viaMethod exists in the notification class
             if(method_exists($this->notification, $viaMethod)) {
