@@ -14,7 +14,7 @@ class Swissecho
     /**
      * @var
      */
-    private $notifiable;
+    private mixed $notifiable = null;
 
     /**
      * @var Notification
@@ -26,24 +26,24 @@ class Swissecho
      */
     private array $vias = ['sms', 'slack', 'whatsapp'];
 
-    private $initRoute;
+    private mixed $initRoute = null;
 
-    private $isCallBack = false;
+    private bool $isCallBack = false;
 
-    private $echoBuilderMessage;
+    private mixed $echoBuilderMessage = null;
 
-    private $gateway;
+    private ?string $gateway = null;
 
-    private $route;
+    private ?string $route = null;
 
 
-    public $message;
+    public mixed $message = null;
 
-    public $to;
+    public mixed $to = null;
 
-    public $sender;
+    public mixed $sender = null;
 
-    public $directNotifiable;
+    public mixed $directNotifiable = null;
 
 
     /**

@@ -40,12 +40,12 @@ trait SwissechoGatewayTrait
 
     protected array $swissecho_config;
 
-    private $responsePayload;
+    private mixed $responsePayload = null;
 
     /**
      * @var array
      */
-    private $requestPayload;
+    private mixed $requestPayload = null;
 
     protected SwissechoMessage $msgBuilder;
     /**

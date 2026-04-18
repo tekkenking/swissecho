@@ -44,7 +44,7 @@ abstract class BaseRoute
 
     protected array $placeConfig;
 
-    protected $notifiable;
+    protected mixed $notifiable = null;
 
     protected Notification $notification;
 

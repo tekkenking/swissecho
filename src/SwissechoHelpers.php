@@ -8,7 +8,7 @@ if(! function_exists('swissecho')) {
 }
 
 if(! function_exists('addCountryCodeToPhoneNumber')) {
-    function addCountryCodeToPhoneNumber($phone, $countryCode)
+    function addCountryCodeToPhoneNumber(string $phone, string $countryCode): string
     {
 
         //If the country code starts with +, remove the +
@@ -34,7 +34,7 @@ if(! function_exists('addCountryCodeToPhoneNumber')) {
 }
 
 if(! function_exists('removeCountryCodeFromPhoneNumber')) {
-    function removeCountryCodeFromPhoneNumber($phone, $countryCode)
+    function removeCountryCodeFromPhoneNumber(string $phone, string $countryCode): string
     {
         //If phone number starts with country code without +, remove it
         if (str_starts_with($phone, $countryCode)) {
@@ -51,7 +51,7 @@ if(! function_exists('removeCountryCodeFromPhoneNumber')) {
 }
 
 if(! function_exists('convertPhoneNumberToArray')) {
-    function convertPhoneNumberToArray($phone)
+    function convertPhoneNumberToArray(array|string $phone): array
     {
         if (is_array($phone)) {
             return $phone;
