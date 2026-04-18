@@ -151,6 +151,161 @@ The phone code is automatically prepended to phone numbers (stripping leading `0
 
 ---
 
+## 🔌 Adding a Custom SMS Gateway
+
+Swissecho is designed to be easily extensible. If you need a gateway that isn't built in, you can wire up your own in **three steps** — no need to touch the package source at all.
+
+---
+
+### Step 1: Create Your Gateway Class
+
+Create a folder anywhere in your project (e.g., `app/Sms/Gateways/MyProvider/`) and add a class inside it. The class **must**:
+
+- Extend `Tekkenking\Swissecho\Routes\Sms\Gateways\BaseGateway`
+- Implement two methods: `init()` and `send()`
+
+```php
+<?php
+
+namespace App\Sms\Gateways\MyProvider;
+
+use Tekkenking\Swissecho\Routes\Sms\Gateways\BaseGateway;
+
+class MyProvider extends BaseGateway
+{
+    /**
+     * Build and return the request payload that will be passed to send().
+     *
+     * Available properties (populated by BaseGateway from the message builder):
+     *   $this->to      — array of recipient phone numbers
+     *   $this->sender  — sender ID / name
+     *   $this->body    — the SMS message text
+     *   $this->config  — your gateway's config block from config/swissecho.php
+     *
+     * @return mixed  Any value you like — it will be passed directly to send().
+     *                Typically a URL string, an array, or a Guzzle request object.
+     */
+    public function init(): mixed
+    {
+        // Example: build a query-string URL
+        $url  = $this->config['url'];
+        $url .= '?api_key='   . $this->config['auth']['api_key'];
+        $url .= '&from='      . $this->sender;
+        $url .= '&to='        . implode(',', $this->to);
+        $url .= '&message='   . urlencode($this->body);
+
+        return $url;
+    }
+
+    /**
+     * Receive the value returned by init(), make the HTTP call,
+     * and return a configured cURL handle.
+     *
+     * @param  mixed $data  Whatever init() returned.
+     * @return \CurlHandle|bool  A ready-to-execute cURL handle.
+     *                           Swissecho calls curl_exec() on it automatically.
+     */
+    public function send($data): \CurlHandle|bool
+    {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $data);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        return $ch;
+    }
+}
+```
+
+> **How it works under the hood:** after `send()` returns the cURL handle, Swissecho's `SwissechoGatewayTrait::execCurl()` calls `curl_exec()`, collects the response, formats it, and fires the `AfterSend` event — you don't have to manage any of that.
+
+---
+
+### Step 2: Register the Gateway in the Config
+
+Open `config/swissecho.php` and add your gateway to the `routes_options.sms.gateway_options` array:
+
+```php
+use App\Sms\Gateways\MyProvider\MyProvider; // ← import your class
+
+'routes_options' => [
+    'sms' => [
+        'gateway_options' => [
+
+            // ... existing gateways ...
+
+            'myprovider' => [               // ← the key becomes the gateway "name"
+                'class'  => MyProvider::class,
+                'url'    => env('MYPROVIDER_URL'),
+                'auth'   => [
+                    'api_key' => env('MYPROVIDER_API_KEY'),
+                ],
+                // add any other keys your gateway needs — they will all be
+                // available inside your class as $this->config['...']
+            ],
+        ],
+    ],
+],
+```
+
+Add the corresponding values to your `.env`:
+
+```dotenv
+MYPROVIDER_URL=https://api.myprovider.com/send
+MYPROVIDER_API_KEY=your_api_key_here
+```
+
+---
+
+### Step 3: Use Your Gateway
+
+That's it — your gateway is now a first-class citizen in Swissecho. Use it exactly like any built-in gateway:
+
+```php
+// Direct / fluent sending
+swissecho()->gateway('myprovider')->quick('2348012345678', 'Hello!');
+
+// Or inside a route callback
+swissecho()->route('sms', function ($ms) {
+    return $ms->to('2348012345678')
+              ->content('Your OTP is 9988')
+              ->gateway('myprovider');
+})->go();
+
+// Or inside a Laravel Notification
+public function toSms($notifiable): SwissechoMessage
+{
+    return (new SwissechoMessage())
+        ->line('Your order has shipped!')
+        ->gateway('myprovider');
+}
+```
+
+You can also map it to a country in `places` for automatic geo-routing:
+
+```php
+'places' => [
+    'zaf' => [                  // South Africa, for example
+        'gateway'   => 'myprovider',
+        'phonecode' => '27',
+    ],
+],
+```
+
+---
+
+### `BaseGateway` Quick Reference
+
+| Member | Type | Description |
+|---|---|---|
+| `$this->to` | `array` | Recipient phone numbers |
+| `$this->sender` | `string` | Sender ID / name |
+| `$this->body` | `string` | The message text |
+| `$this->config` | `array` | Your gateway's full config block from `swissecho.php` |
+| `init(): mixed` | abstract method | Build the request payload; return value is passed to `send()` |
+| `send($data): \CurlHandle\|bool` | abstract method | Set up and return a cURL handle; Swissecho executes it |
+
+---
+
 ## Usage
 
 Swissecho can be used in **two ways**: directly (without a Notification class), or through Laravel's notification system.
