@@ -2,7 +2,7 @@
 
 ## What is Swissecho?
 
-**Swissecho** is a Laravel package that provides a unified, fluent API for sending messages across **multiple channels** and **multiple gateway providers**. Instead of writing separate integration code for each SMS provider, voice call service, or messaging platform, Swissecho lets you switch between them with a single method call.
+**Swissecho** is a Laravel package that provides a unified, fluent API for sending messages across **multiple channels** and **multiple gateway providers**. Instead of writing separate integration code for each provider, you configure them all in one place and switch between them with a single method call.
 
 ### Supported Channels (Routes)
 
@@ -25,27 +25,22 @@
 
 ---
 
+## Requirements
+
+| Dependency | Supported Versions |
+|---|---|
+| **PHP** | ^8.1 |
+| **Laravel** | 11.x, 12.x, 13.x |
+
+---
+
 ## Installation
 
 ```bash
 composer require tekkenking/swissecho
 ```
 
-**Laravel 5.5+:** The package auto-discovers itself — no manual registration needed.
-
-**Laravel < 5.5:** Add the service provider and facade manually:
-
-```php
-'providers' => [
-    // ...
-    Tekkenking\Swissecho\SwissechoServiceProvider::class,
-],
-
-'aliases' => [
-    // ...
-    'Swissecho' => Tekkenking\Swissecho\SwissechoFacade::class,
-],
-```
+The package auto-discovers itself via Laravel's package auto-discovery — no manual registration needed.
 
 ---
 
@@ -216,7 +211,7 @@ class MyProvider extends BaseGateway
 }
 ```
 
-> **How it works under the hood:** after `send()` returns the cURL handle, Swissecho's `SwissechoGatewayTrait::execCurl()` calls `curl_exec()`, collects the response, formats it, and fires the `AfterSend` event — you don't have to manage any of that.
+> **How it works under the hood:** after `send()` returns the cURL handle, Swissecho's `SwissechoGatewayTrait::execCurl()` calls `curl_exec()`, collects the response, formats it, and fires the `AfterSend` event.
 
 ---
 
@@ -587,7 +582,7 @@ class LogSmsDelivery
 
 ## Webhooks
 
-Swissecho includes a built-in webhook handler for receiving delivery reports or callbacks from gateway providers. The webhook system validates a secret key and routes the request to the appropriate gateway class.
+Swissecho includes a built-in webhook handler for receiving delivery reports or callbacks from gateway providers. The webhook system validates a secret key and routes the request to the appropriate gateway handler.
 
 Configure webhooks per gateway in `config/swissecho.php`:
 
@@ -628,11 +623,6 @@ convertPhoneNumberToArray('2348012345678, 2348098765432');
 ```
 
 ---
-
-## Requirements
-
-- **PHP** ≥ 8.1
-- **Laravel** 5.5+ (auto-discovery) or any version with manual provider registration
 
 ## License
 
