@@ -210,7 +210,7 @@ class MyProvider extends BaseGateway
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $data);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // ⚠️ Only disable in local/testing environments; keep true in production
         return $ch;
     }
 }
@@ -302,7 +302,7 @@ You can also map it to a country in `places` for automatic geo-routing:
 | `$this->body` | `string` | The message text |
 | `$this->config` | `array` | Your gateway's full config block from `swissecho.php` |
 | `init(): mixed` | abstract method | Build the request payload; return value is passed to `send()` |
-| `send($data): \CurlHandle\|bool` | abstract method | Set up and return a cURL handle; Swissecho executes it |
+| `send($data): \CurlHandle|bool` | abstract method | Set up and return a cURL handle; Swissecho executes it |
 
 ---
 
