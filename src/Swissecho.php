@@ -131,7 +131,7 @@ class Swissecho
      * @return ?Swissecho
      * @throws SwissechoException
      */
-    public function route(string $route = null, string | callable $callBack = null): ?Swissecho
+    public function route(?string $route = null, string|callable|null $callBack = null): ?Swissecho
     {
         $this->route = ucfirst($route ??  config('swissecho.route'));
         $routeClass = $this->isRouteAvailable();
