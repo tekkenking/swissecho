@@ -17,7 +17,8 @@ class SwissechoServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-
+        $this->app->make(\Illuminate\Notifications\ChannelManager::class)
+            ->extend('swissecho', fn () => $this->app->make(Swissecho::class));
     }
 
     /**
