@@ -27,8 +27,9 @@ class SwissechoMock
     {
         $build = '';
         if(App::environment('local')) {
+            $to = is_array($msgBuilder->to) ? implode(',', $msgBuilder->to) : (string) $msgBuilder->to;
             $build  = "From: ". $msgBuilder->from."\n";
-            $build .= "To: ". implode(',', $msgBuilder->to)."\n";
+            $build .= "To: ". $to."\n";
             $build .= "Message: ". $msgBuilder->message . "\n";
             $build .= "============================================\n";
             $build .= "BUILD INFO: (Not included in the actual BODY):\n";
@@ -69,18 +70,20 @@ class SwissechoMock
 
     public function mockByMail($buildMock, $msgBuilder)
     {
-        Mail::raw($buildMock, function($message) use ($msgBuilder) {
+        $to = is_array($msgBuilder->to) ? implode(',', $msgBuilder->to) : (string) $msgBuilder->to;
+        Mail::raw($buildMock, function($message) use ($msgBuilder, $to) {
             $message->to([
                 $this->config['fake_mail']
-            ])->subject('Mock: ['.implode(',', $msgBuilder->to).']');
+            ])->subject('Mock: ['.$to.']');
         });
     }
 
     public function mockByLog($buildMock, $msgBuilder)
     {
+        $to = is_array($msgBuilder->to) ? implode(',', $msgBuilder->to) : (string) $msgBuilder->to;
         $this->_prepareLogFile();
         Log::channel('swissecho_mock')
-            ->info("Mock: [".implode(',', $msgBuilder->to)."] \n".$buildMock. "\n");
+            ->info("Mock: [".$to."] \n".$buildMock. "\n");
     }
 
     /*

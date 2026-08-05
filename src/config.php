@@ -7,6 +7,7 @@ use Tekkenking\Swissecho\Routes\Sms\Gateways\Routemobile\RouteMobile;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Smsbroadcast\SmsBroadCastDotComDotAu;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Termii\Termii;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Tnz\Tnz;
+use Tekkenking\Swissecho\Routes\Telegram\TelegramRoute;
 use Tekkenking\Swissecho\Routes\Voice\Gateways\Termii\TermiiVoiceCall;
 use Tekkenking\Swissecho\Routes\Voice\Gateways\Textngxyz\TextngxyzVoiceCall;
 use Tekkenking\Swissecho\Routes\Whatsapp\Gateways\Kudisms\KudismsWhatsapp;
@@ -101,10 +102,23 @@ return [
         ],
 
         'slack' => [
-            'class' =>  SlackRoute::class,
-            'auth'  =>  [
-                //'api'   =>
-            ]
+            'class'           => SlackRoute::class,
+            'auth'            => [
+                'webhook' => env('SLACK_WEBHOOK_URL'),
+                'token'   => env('SLACK_BOT_TOKEN'),
+            ],
+            'default_channel' => env('SLACK_DEFAULT_CHANNEL'),
+            'url'             => env('SLACK_API_URL', 'https://slack.com/api/chat.postMessage'),
+        ],
+
+        'telegram' => [
+            'class'           => TelegramRoute::class,
+            'auth'            => [
+                'token' => env('TELEGRAM_BOT_TOKEN'),
+            ],
+            'default_chat_id' => env('TELEGRAM_DEFAULT_CHAT_ID'),
+            'parse_mode'      => env('TELEGRAM_PARSE_MODE'), // HTML, MarkdownV2, etc.
+            'url'             => env('TELEGRAM_API_URL'),
         ],
 
         'voice'  =>  [
