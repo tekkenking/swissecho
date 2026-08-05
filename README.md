@@ -11,7 +11,8 @@
 | **SMS** | Traditional text messages | Termii, RouteMobile, SmsBroadcast (AU), TNZ (NZ), NigerianBulkSMS, Montnets, Wirepick |
 | **Voice** | Voice OTP / voice calls | Termii, Textng.xyz |
 | **WhatsApp** | WhatsApp messaging | KudiSMS |
-| **Slack** | Slack notifications | Built-in Slack route |
+| **Slack** | Slack notifications | Incoming Webhook, Bot Token (`chat.postMessage`) |
+| **Telegram** | Telegram Bot messages | Telegram Bot API (`sendMessage`) |
 
 ### Key Features
 
@@ -100,6 +101,20 @@ TEXTNGXYZ_API_KEY=your_api_key
 # ── KudiSMS (WhatsApp) ────────────────────────────────────
 KUDISMS_API_KEY=your_api_key
 KUDISMS_URL=your_url
+
+# ── Slack ─────────────────────────────────────────────────
+# Option A — Incoming Webhook (no channel needed in code)
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T.../B.../...
+# Option B — Bot Token (requires a channel ID or name)
+SLACK_BOT_TOKEN=xoxb-your-bot-token
+SLACK_DEFAULT_CHANNEL=#general
+# SLACK_API_URL defaults to https://slack.com/api/chat.postMessage
+
+# ── Telegram ──────────────────────────────────────────────
+TELEGRAM_BOT_TOKEN=123456:ABC-your-telegram-bot-token
+TELEGRAM_DEFAULT_CHAT_ID=123456789
+# TELEGRAM_PARSE_MODE=HTML        # Optional: HTML or MarkdownV2
+# TELEGRAM_API_URL=               # Optional: override the API URL
 ```
 
 ### The Config File
@@ -111,7 +126,7 @@ You can publish and customize the full config at `config/swissecho.php`. The mos
 | `live` | `true` = send real messages; `false` = mock mode |
 | `sender` | Default sender ID/name |
 | `fake` | Mock strategy: "log" or "mail" |
-| `route` | Default channel: `sms`, `voice`, `whatsapp`, or `slack` |
+| `route` | Default channel: `sms`, `voice`, `whatsapp`, `slack`, or `telegram` |
 | `routes_options` | Per-channel gateway definitions and geo-routing rules |
 
 ### Geo-Routing with `places`
@@ -378,10 +393,29 @@ swissecho()->route('whatsapp', function ($ms) {
 
 #### Sending via Slack
 
+**Incoming Webhook mode** (set `SLACK_WEBHOOK_URL` — no recipient needed):
+
+```php
+swissecho()->message('Deployment finished ✅')
+    ->route('slack')
+    ->go();
+```
+
+**Bot Token mode** (set `SLACK_BOT_TOKEN` — channel is required):
+
 ```php
 swissecho()->message('Hello team!')
-    ->to('CHANNEL_ID')
+    ->to('#alerts')
     ->route('slack')
+    ->go();
+```
+
+#### Sending via Telegram
+
+```php
+swissecho()->message('Server restarted 🔄')
+    ->to('123456789')   // your Telegram chat_id
+    ->route('telegram')
     ->go();
 ```
 
@@ -422,7 +456,7 @@ class OrderShipped extends Notification
 
     /**
      * (Optional) Tell Swissecho which routes to use.
-     * If omitted, defaults to ['sms', 'slack', 'whatsapp'].
+     * If omitted, defaults to ['sms', 'slack', 'whatsapp', 'telegram'].
      */
     public function swissechoRoutes($notifiable): array
     {
@@ -431,7 +465,7 @@ class OrderShipped extends Notification
 
     /**
      * Build the SMS message.
-     * Method name follows the pattern: to{Route}  →  toSms, toVoice, toWhatsapp, toSlack
+     * Method name follows the pattern: to{Route}  →  toSms, toVoice, toWhatsapp, toSlack, toTelegram
      */
     public function toSms($notifiable): SwissechoMessage
     {
@@ -463,6 +497,22 @@ class User extends Authenticatable
     public function routeNotificationPhone(): string
     {
         return $this->mobile_number;
+    }
+
+    /**
+     * (Optional) Slack channel for this user.
+     */
+    public function routeNotificationSlackChannel(): string
+    {
+        return '#team-alerts';
+    }
+
+    /**
+     * (Optional) Telegram chat_id for this user.
+     */
+    public function routeNotificationTelegramChatId(): string
+    {
+        return $this->telegram_chat_id;
     }
 
     /**
