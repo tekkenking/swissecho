@@ -37,14 +37,19 @@ class Foundation {
         }
 
 
-        $routeWebhookSecret = $route['webhook']['secret'];
+        $routeWebhookSecret = $route['webhook']['secret'] ?? null;
+
+        if (empty($routeWebhookSecret)) {
+            return response()->json(['message' => 'webhook not configured'], 401);
+        }
+
         $routeWehookClass = $route['class'];
         $routeWebhookHandle = $route['webhook']['handle'];
 
         //Validate the secret key from the webhook url
         if(!$this->validateSecret($key, $routeWebhookSecret)) {
             //Invalid key;
-            return response()->json(['message'=> 'invalid key']);
+            return response()->json(['message'=> 'invalid key'], 401);
         }
 
         //initiate the webhook class and method of the route class
@@ -54,7 +59,7 @@ class Foundation {
 
     }
 
-    private function validateSecret(string $key, string $routeWebhookSecret): bool
+    private function validateSecret(string $key, ?string $routeWebhookSecret): bool
     {
         return ($key === $routeWebhookSecret);
     }

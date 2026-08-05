@@ -33,7 +33,7 @@ return [
                         'api_key'   =>  env('TERMII_API_KEY')
                     ],
                     'webhook'   => [
-                        'secret'    => env('TERMI_WEBHOOK_SECRET', '89h98y2vn8y283929878'),
+                        'secret'    => env('TERMI_WEBHOOK_SECRET'),
                         'handle'    => 'webhook'
                     ]
                 ],

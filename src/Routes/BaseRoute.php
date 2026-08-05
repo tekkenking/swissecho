@@ -128,7 +128,7 @@ abstract class BaseRoute
         $this->msgBuilder->place = $this->place;
     }
 
-    protected function setPlaceConfifg(): void
+    protected function setPlaceConfig(): void
     {
         $this->placeConfig = $this->config['routes_options'][$this->route]['places'][$this->place];
     }
@@ -175,7 +175,7 @@ abstract class BaseRoute
         $this->msgBuilder->to($this->prepareTo());
         $this->msgBuilder->sender($this->prepareSender());
         $this->setPlace();
-        $this->setPlaceConfifg();
+        $this->setPlaceConfig();
         $this->setIdentifier();
         $this->msgBuilder->route($this->route);
         $this->msgBuilder->gateway($this->gateway);
@@ -188,7 +188,7 @@ abstract class BaseRoute
         $this->msgBuilder = $routeBuilder;
         $this->msgBuilder->sender($this->prepareSender());
         $this->setPlace();
-        $this->setPlaceConfifg();
+        $this->setPlaceConfig();
         $this->msgBuilder->route($this->route);
         $this->msgBuilder->gateway($this->gateway);
         $this->pushToGateway();
