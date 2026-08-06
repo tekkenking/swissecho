@@ -122,9 +122,9 @@ trait HttpRoute
     }
 
     /**
-     * Override BaseRoute::setPlaceConfifg() — no place config needed for HTTP channels.
+     * Override BaseRoute::setPlaceConfig() — no place config needed for HTTP channels.
      */
-    protected function setPlaceConfifg(): void
+    protected function setPlaceConfig(): void
     {
         $this->placeConfig = [];
     }

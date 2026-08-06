@@ -24,7 +24,7 @@ class Swissecho
     /**
      * @var array|string[]
      */
-    private array $vias = ['sms', 'slack', 'whatsapp', 'telegram'];
+    private array $vias = ['sms', 'slack', 'whatsapp', 'telegram', 'voice'];
 
     private $initRoute;
 
