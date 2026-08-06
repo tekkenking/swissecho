@@ -61,7 +61,7 @@ class Foundation {
 
     private function validateSecret(string $key, ?string $routeWebhookSecret): bool
     {
-        return ($key === $routeWebhookSecret);
+        return $routeWebhookSecret !== null && hash_equals($routeWebhookSecret, $key);
     }
 
     public function loadConfig()
