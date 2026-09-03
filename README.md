@@ -58,6 +58,7 @@ SWISSECHO_SENDER=MyApp         # Default sender name
 SWISSECHO_FAKE=log             # Mock mode: "log" (writes to file) or "mail" (sends email)
 SWISSECHO_FAKE_MAIL=admin@example.com  # Email for mock mode when SWISSECHO_FAKE=mail
 SWISSECHO_ROUTE=sms            # Default route/channel: sms, voice, whatsapp, slack
+SWISSECHO_DEFAULT_PLACE=       # Optional: default place/country code (e.g. nga) used when a notifiable doesn't specify one
 
 # ── Termii (SMS & Voice) ──────────────────────────────────
 TERMII_API_KEY=your_api_key
@@ -164,6 +165,26 @@ Each route (SMS, voice, WhatsApp) has a `places` map that **automatically picks 
 ```
 
 The phone code is automatically prepended to phone numbers (stripping leading `0` or `+`).
+
+#### Setting a Default Place
+
+If a notifiable doesn't set a place via `->place()` or `routeNotificationPlace()`, Swissecho needs a default place to fall back to. Configure one of the following:
+
+```dotenv
+SWISSECHO_DEFAULT_PLACE=gha  # Global default for all routes
+```
+
+Or, if you've published the config, set it per-route:
+
+```php
+'sms' => [
+    'default_place' => 'aus',  // SMS will default to Australia
+    'gateway_options' => [ /* ... */ ],
+    'places' => [ /* ... */ ],
+],
+```
+
+If no default is configured anywhere and the notifiable doesn't have `routeNotificationPlace()`, Swissecho throws a `SwissechoException` listing the available places and how to set a default.
 
 ---
 
