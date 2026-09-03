@@ -61,6 +61,18 @@ class DefaultPlaceTest extends TestCase
         $this->assertTrue(true);
     }
 
+    public function test_it_throws_helpful_exception_for_an_unconfigured_place(): void
+    {
+        $this->app['config']->set('swissecho.routes_options.sms.default_place', 'invalid');
+
+        $swissecho = new \Tekkenking\Swissecho\Swissecho();
+
+        $this->expectException(SwissechoException::class);
+        $this->expectExceptionMessage("Place 'invalid' is not configured for the 'sms' route");
+
+        $swissecho->send($this->notifiableWithoutPlace(), $this->smsNotification());
+    }
+
     public function test_route_notification_place_takes_priority_over_default_place(): void
     {
         $this->app['config']->set('swissecho.routes_options.sms.default_place', 'gha');

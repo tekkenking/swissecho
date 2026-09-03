@@ -137,7 +137,18 @@ abstract class BaseRoute
 
     protected function setPlaceConfig(): void
     {
-        $this->placeConfig = $this->config['routes_options'][$this->route]['places'][$this->place];
+        $places = $this->config['routes_options'][$this->route]['places'] ?? [];
+
+        if (!array_key_exists($this->place, $places)) {
+            $availablePlaces = !empty($places) ? implode(', ', array_keys($places)) : 'none configured';
+
+            throw new SwissechoException(
+                "Swissecho: Place '{$this->place}' is not configured for the '{$this->route}' route. "
+                . "Available places: {$availablePlaces}."
+            );
+        }
+
+        $this->placeConfig = $places[$this->place];
     }
 
     /**
