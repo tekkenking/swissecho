@@ -337,11 +337,7 @@ Swissecho::
 app('swissecho')
 ```
 
-> ⚠️ **Don't** `use Tekkenking\Swissecho\Swissecho;` and call it statically — that's the
-> concrete service class, not the facade, and PHP will raise a "non-static method
-> cannot be called statically" error. Always import the facade from the
-> `Tekkenking\Swissecho\Facades` namespace, or rely on Laravel's package
-> auto-discovery which registers the `Swissecho` alias for you automatically.
+For Laravel facade calls, import `Tekkenking\Swissecho\Facades\Swissecho`.
 
 ---
 
