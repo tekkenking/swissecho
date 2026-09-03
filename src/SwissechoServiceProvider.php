@@ -13,12 +13,14 @@ class SwissechoServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $this->app->make(\Illuminate\Notifications\ChannelManager::class)
-            ->extend('swissecho', fn () => $this->app->make(Swissecho::class));
+        $app = $this->app;
 
-        if ($this->app->runningInConsole()) {
+        $app->make(\Illuminate\Notifications\ChannelManager::class)
+            ->extend('swissecho', fn () => $app->make(Swissecho::class));
+
+        if ($app->runningInConsole()) {
             $this->publishes([
-                __DIR__ . '/../config/swissecho.php' => $this->app->configPath('swissecho.php'),
+                __DIR__ . '/../config/swissecho.php' => $app->configPath('swissecho.php'),
             ], 'swissecho-config');
         }
     }
