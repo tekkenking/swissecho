@@ -39,7 +39,7 @@
                 "Tekkenking\\Swissecho\\SwissechoServiceProvider"
             ],
             "aliases": {
-                "Swissecho": "Tekkenking\\Swissecho\\SwissechoFacade"
+                "Swissecho": "Tekkenking\\Swissecho\\Facades\\Swissecho"
             }
         }
     }
