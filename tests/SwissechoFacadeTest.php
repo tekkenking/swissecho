@@ -55,4 +55,32 @@ class SwissechoFacadeTest extends TestCase
 
         $this->assertInstanceOf(\Tekkenking\Swissecho\Swissecho::class, $channel);
     }
+
+    public function test_config_is_publishable_under_swissecho_config_tag(): void
+    {
+        $publishes = SwissechoServiceProvider::pathsToPublish(
+            SwissechoServiceProvider::class,
+            'swissecho-config'
+        );
+
+        $this->assertCount(1, $publishes);
+
+        $source = array_key_first($publishes);
+        $this->assertSame(
+            realpath(__DIR__ . '/../config/swissecho.php'),
+            realpath($source)
+        );
+        $this->assertSame(
+            $this->app->configPath('swissecho.php'),
+            $publishes[$source]
+        );
+    }
+
+    public function test_merged_config_matches_package_config_file(): void
+    {
+        $this->assertSame(
+            require __DIR__ . '/../config/swissecho.php',
+            $this->app['config']['swissecho']
+        );
+    }
 }
