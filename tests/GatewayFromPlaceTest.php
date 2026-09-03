@@ -113,4 +113,18 @@ class GatewayFromPlaceTest extends TestCase
         // requested gateway should take precedence.
         $this->assertSame('termii', $this->resolvedGateway($swissecho));
     }
+
+    public function test_it_throws_when_place_gateway_is_not_configured_for_the_route(): void
+    {
+        $this->app['config']->set('swissecho.routes_options.sms.places.gha.gateway', 'missing');
+
+        $swissecho = new \Tekkenking\Swissecho\Swissecho();
+
+        $this->expectException(SwissechoException::class);
+        $this->expectExceptionMessage(
+            "Swissecho: Gateway 'missing' configured for place 'gha' is not configured for the 'sms' route."
+        );
+
+        $swissecho->send($this->notifiable(), $this->smsNotification());
+    }
 }
