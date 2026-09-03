@@ -104,10 +104,7 @@ abstract class BaseRoute
      */
     public function gateway(string | null $gateway = null): static
     {
-        if ($gateway) {
-            $this->explicitGateway = true;
-        }
-
+        $this->explicitGateway = ($gateway !== null);
         $this->gateway = $gateway ?? $this->getDefaultGateway();
 
         $this->loadGatewayConfig();
