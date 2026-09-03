@@ -47,4 +47,12 @@ class SwissechoFacadeTest extends TestCase
         $this->assertTrue(class_exists(Swissecho::class));
         $this->assertTrue(is_subclass_of(Swissecho::class, \Illuminate\Support\Facades\Facade::class));
     }
+
+    public function test_swissecho_notification_channel_is_registered_without_error(): void
+    {
+        $channelManager = $this->app->make(\Illuminate\Notifications\ChannelManager::class);
+        $channel = $channelManager->driver('swissecho');
+
+        $this->assertInstanceOf(\Tekkenking\Swissecho\Swissecho::class, $channel);
+    }
 }
