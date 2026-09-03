@@ -8,37 +8,27 @@ use Illuminate\Support\ServiceProvider;
 
 class SwissechoServiceProvider extends ServiceProvider
 {
-
-
     /**
      * Bootstrap any application services.
-     *
-     * @return void
      */
-    public function boot()
+    public function boot(): void
     {
-        $app = $this->app;
-
-        $app->make(\Illuminate\Notifications\ChannelManager::class)
-            ->extend('swissecho', fn () => $app->make(Swissecho::class));
+        $this->app->make(\Illuminate\Notifications\ChannelManager::class)
+            ->extend('swissecho', fn () => $this->app->make(Swissecho::class));
     }
 
     /**
      * Register any application services.
-     *
-     * @return void
      */
-    public function register()
+    public function register(): void
     {
         $this->mergeConfigFrom(
-            __DIR__.'/config.php', 'swissecho'
+            __DIR__ . '/../config/swissecho.php',
+            'swissecho'
         );
 
-
-        $this->app->singleton('swissecho', function ($app) {
+        $this->app->singleton('swissecho', function () {
             return new Swissecho();
         });
-
     }
-
 }
