@@ -44,6 +44,14 @@ abstract class BaseRoute
 
     protected array $placeConfig;
 
+    /**
+     * Whether the gateway was explicitly requested by the caller
+     * (as opposed to falling back to the route's default gateway).
+     *
+     * @var bool
+     */
+    protected bool $explicitGateway = false;
+
     protected $notifiable;
 
     protected Notification $notification;
@@ -96,6 +104,7 @@ abstract class BaseRoute
      */
     public function gateway(string | null $gateway = null): static
     {
+        $this->explicitGateway = $gateway !== null;
         $this->gateway = $gateway ?? $this->getDefaultGateway();
 
         $this->loadGatewayConfig();
@@ -152,6 +161,37 @@ abstract class BaseRoute
     }
 
     /**
+     * Ensure the gateway used matches the one configured for the
+     * currently resolved place, unless the caller explicitly requested
+     * a specific gateway.
+     *
+     * @return void
+     */
+    protected function setGatewayFromPlace(): void
+    {
+        if ($this->explicitGateway) {
+            return;
+        }
+
+        $placeGateway = $this->placeConfig['gateway'] ?? null;
+
+        if (!$placeGateway) {
+            return;
+        }
+
+        $gatewayOptions = $this->config['routes_options'][$this->route]['gateway_options'] ?? [];
+
+        if (!array_key_exists(strtolower($placeGateway), $gatewayOptions)) {
+            throw new SwissechoException(
+                "Swissecho: Gateway '{$placeGateway}' configured for place '{$this->place}' "
+                . "is not configured for the '{$this->route}' route."
+            );
+        }
+
+        $this->gateway($placeGateway);
+    }
+
+    /**
      * @param $notifiable
      * @param Notification $notification
      * @return void
@@ -170,7 +210,7 @@ abstract class BaseRoute
     public function bootByDirect($routeBuilder): void
     {
         $this->loadConfig();
-        if($routeBuilder->gateway) {
+        if ($routeBuilder->gateway !== null) {
             $this->gateway($routeBuilder->gateway);
         }
         $this->directSend($routeBuilder);
@@ -194,6 +234,7 @@ abstract class BaseRoute
         $this->msgBuilder->sender($this->prepareSender());
         $this->setPlace();
         $this->setPlaceConfig();
+        $this->setGatewayFromPlace();
         $this->setIdentifier();
         $this->msgBuilder->route($this->route);
         $this->msgBuilder->gateway($this->gateway);
@@ -207,6 +248,7 @@ abstract class BaseRoute
         $this->msgBuilder->sender($this->prepareSender());
         $this->setPlace();
         $this->setPlaceConfig();
+        $this->setGatewayFromPlace();
         $this->msgBuilder->route($this->route);
         $this->msgBuilder->gateway($this->gateway);
         $this->pushToGateway();
