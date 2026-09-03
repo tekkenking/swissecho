@@ -119,7 +119,13 @@ TELEGRAM_DEFAULT_CHAT_ID=123456789
 
 ### The Config File
 
-You can publish and customize the full config at `config/swissecho.php`. The most important sections are:
+Publish the config file to `config/swissecho.php` in your application so you can customize it:
+
+```bash
+php artisan vendor:publish --tag=swissecho-config
+```
+
+The most important sections are:
 
 | Key | Purpose |
 |---|---|
