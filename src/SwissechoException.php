@@ -49,8 +49,8 @@ class SwissechoException extends Exception
             . "Available places for '{$route}': {$placesList}." . PHP_EOL . PHP_EOL
             . "To fix this, do one of the following:" . PHP_EOL
             . "1. Set a global default in your .env file: SWISSECHO_DEFAULT_PLACE={$example}" . PHP_EOL
-            . "2. Set it per-route in your published config/swissecho.php: 'routes_options.{$route}.default_place' => '{$example}'" . PHP_EOL
-            . "3. Set it explicitly on your notifiable model by implementing: public function routeNotificationPlace() { return '{$example}'; }";
+            . "2. Set it per-route in your published config/swissecho.php under routes_options['{$route}']: 'default_place' => '{$example}'" . PHP_EOL
+            . "3. Set it explicitly on your notifiable model by implementing: public function routeNotificationPlace(): string { return '{$example}'; }";
 
         return new self($message);
     }
