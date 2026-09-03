@@ -104,7 +104,7 @@ abstract class BaseRoute
      */
     public function gateway(string | null $gateway = null): static
     {
-        $this->explicitGateway = ($gateway !== null);
+        $this->explicitGateway = $gateway !== null;
         $this->gateway = $gateway ?? $this->getDefaultGateway();
 
         $this->loadGatewayConfig();
@@ -210,7 +210,7 @@ abstract class BaseRoute
     public function bootByDirect($routeBuilder): void
     {
         $this->loadConfig();
-        if($routeBuilder->gateway) {
+        if ($routeBuilder->gateway !== null) {
             $this->gateway($routeBuilder->gateway);
         }
         $this->directSend($routeBuilder);
