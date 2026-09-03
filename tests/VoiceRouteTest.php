@@ -20,6 +20,7 @@ class VoiceRouteTest extends TestCase
         $app['config']->set('swissecho.live', false);
         $app['config']->set('swissecho.fake', 'log');
         $app['config']->set('app.env', 'local');
+        $app['config']->set('swissecho.routes_options.voice.default_place', 'nga');
     }
 
     public function test_voice_route_class_exists(): void

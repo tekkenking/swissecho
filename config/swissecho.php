@@ -23,6 +23,7 @@ return [
 
     'routes_options'    =>  [
         'sms'           =>  [
+            'default_place'    =>  env('SWISSECHO_DEFAULT_PLACE', null),
             'gateway_options'  =>  [
                 'termii'        =>  [
                     'class'     =>  Termii::class,
@@ -138,6 +139,7 @@ return [
         ],
 
         'voice'  =>  [
+            'default_place'     =>  env('SWISSECHO_DEFAULT_PLACE', null),
             'gateway_options'   =>  [
 
                 'termii'        =>  [
@@ -166,7 +168,8 @@ return [
 
         'whatsapp'  =>  [
 
-            'gateway'   => env('SWISSECHO_ROUTE_GATEWAY', 'kudisms'),
+            'gateway'        => env('SWISSECHO_ROUTE_GATEWAY', 'kudisms'),
+            'default_place'  => env('SWISSECHO_DEFAULT_PLACE', null),
 
             'gateway_options'  =>  [
                 'kudisms'    =>  [

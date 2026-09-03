@@ -117,12 +117,19 @@ abstract class BaseRoute
 
     protected function setPlace(): void
     {
+        $defaultPlace = $this->config['routes_options'][$this->route]['default_place'] ?? null;
+
         if ($this->msgBuilder->place) {
-            $this->place = $this->msgBuilder->place;
+            $this->place = strtolower($this->msgBuilder->place);
         } else if($this->notifiable && method_exists($this->notifiable, 'routeNotificationPlace')) {
             $this->place = strtolower($this->notifiable->routeNotificationPlace());
+        } else if ($defaultPlace) {
+            $this->place = strtolower($defaultPlace);
         } else {
-            $this->place = array_key_first($this->config['routes_options'][$this->route]['places']);
+            throw SwissechoException::noPlaceConfigured(
+                $this->route,
+                array_keys($this->config['routes_options'][$this->route]['places'] ?? [])
+            );
         }
 
         $this->msgBuilder->place = $this->place;
@@ -130,7 +137,18 @@ abstract class BaseRoute
 
     protected function setPlaceConfig(): void
     {
-        $this->placeConfig = $this->config['routes_options'][$this->route]['places'][$this->place];
+        $places = $this->config['routes_options'][$this->route]['places'] ?? [];
+
+        if (!array_key_exists($this->place, $places)) {
+            $availablePlaces = !empty($places) ? implode(', ', array_keys($places)) : 'none configured';
+
+            throw new SwissechoException(
+                "Swissecho: Place '{$this->place}' is not configured for the '{$this->route}' route. "
+                . "Available places: {$availablePlaces}."
+            );
+        }
+
+        $this->placeConfig = $places[$this->place];
     }
 
     /**
