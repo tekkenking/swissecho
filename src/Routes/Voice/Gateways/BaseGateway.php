@@ -3,8 +3,8 @@
 
 namespace Tekkenking\Swissecho\Routes\Voice\Gateways;
 
-use Illuminate\Support\Facades\Log;
 use Tekkenking\Swissecho\SwissechoGatewayTrait;
+use Tekkenking\Swissecho\SwissechoMessage;
 
 abstract class BaseGateway
 {
@@ -17,34 +17,24 @@ abstract class BaseGateway
 
     abstract public function send($data);
 
-    public function __construct($gateway_config, $payload)
+    /**
+     * @param $gateway_config
+     * @param SwissechoMessage $msgBuilder
+     */
+    public function __construct($gateway_config, SwissechoMessage $msgBuilder)
     {
+        $this->msgBuilder = $msgBuilder;
 
-        $this->payload  = $payload;
+        $this->payload  = $this->msgBuilder->get();
         $this->config   = $gateway_config;
 
-        //For the sms class
-        $this->to = (string) $this->payload['to'][0];
-        $this->body = (int)$this->payload['message']; //The OTP code
+        //For the voice class
+        $to = $this->payload['to'] ?? null;
+        $this->to = (string) (is_array($to) ? reset($to) : $to);
 
-    }
+        $this->sender = (string) ($this->payload['sender'] ?? '');
 
-    /**
-     * @param bool $status
-     * @param $response
-     * @return void
-     */
-    public function setServerResponse(bool $status, $response): void
-    {
-        $this->serverResponse = [
-            'status'    =>  $status,
-            'response'  =>  $response,
-            'from'      =>  'VoiceOtp channel',
-            'to'        =>  $this->to,
-            'body'      =>  $this->body
-        ];
-
-        Log::info('VoiceOtp gateway class: '. get_called_class(), $this->serverResponse);
+        $this->body = (int) $this->payload['message']; //The OTP code
     }
 
 }
