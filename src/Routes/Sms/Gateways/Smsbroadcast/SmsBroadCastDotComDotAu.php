@@ -17,7 +17,7 @@ class SmsBroadCastDotComDotAu extends \Tekkenking\Swissecho\Routes\Sms\Gateways\
         $password = $this->config['auth']['password'];
         $destination = implode(',', $this->to);
 
-        $source = $this->from;
+        $source = $this->sender;
         $text = $this->body;
         $ref = Str::random(10);
 
