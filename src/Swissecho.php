@@ -24,7 +24,9 @@ class Swissecho
     /**
      * @var array|string[]
      */
-    private array $vias = ['sms', 'slack', 'whatsapp', 'telegram', 'voice'];
+    private const DEFAULT_VIAS = ['sms', 'slack', 'whatsapp', 'telegram', 'voice'];
+
+    private array $vias = self::DEFAULT_VIAS;
 
     private $initRoute;
 
@@ -57,9 +59,12 @@ class Swissecho
         $this->notifiable = $notifiable;
         $this->notification = $notification;
 
-        if (method_exists($notification, 'swissechoRoutes')) {
-            $this->vias = $notification->swissechoRoutes($notifiable);
-        }
+        //Always reassign: this object is a singleton and is reused for every
+        //notification, so a previous notification's swissechoRoutes() would
+        //otherwise still be in effect here.
+        $this->vias = method_exists($notification, 'swissechoRoutes')
+            ? $notification->swissechoRoutes($notifiable)
+            : self::DEFAULT_VIAS;
         
         $this->makeRoutes();
     }
@@ -172,6 +177,41 @@ class Swissecho
      */
     public function go(): mixed
     {
+        try {
+            return $this->dispatch();
+        } finally {
+            //This object is a container singleton, so anything left set here
+            //would leak into the next send.
+            $this->resetSendState();
+        }
+    }
+
+    /**
+     * Clear the per-send state, so one send cannot affect the next.
+     *
+     * @return void
+     */
+    private function resetSendState(): void
+    {
+        $this->route = null;
+        $this->gateway = null;
+        $this->to = null;
+        $this->sender = null;
+        $this->message = null;
+        $this->isCallBack = false;
+        $this->echoBuilderMessage = null;
+
+        //$initRoute is deliberately left in place: it is the artifact of the
+        //send just made, which tests and debugging read, and resetting $route
+        //above guarantees go() rebuilds it before the next send uses it.
+    }
+
+    /**
+     * @return mixed
+     * @throws SwissechoException
+     */
+    private function dispatch(): mixed
+    {
 
         //checking if initRoute is already initiated
         if(!$this->route) {
@@ -202,6 +242,10 @@ class Swissecho
 
             return $prepped->bootByDirect($this->echoBuilderMessage);
         } else {
+            if(!isset($this->notification)) {
+                throw new SwissechoException('Nothing to send: give route() a message or a callback, or send a notification.');
+            }
+
             $this->notifiable = $this->directNotifiable ?? $this->notifiable;
             return $prepped->bootByNotification($this->notifiable, $this->notification);
         }
