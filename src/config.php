@@ -18,7 +18,7 @@ return [
     'live'      =>  env('SWISSECHO_ENABLED', false),
     'sender'    =>  env('SWISSECHO_SENDER'),
     'fake'      =>  env('SWISSECHO_FAKE', 'log'), //mail
-    'fake_mail'      =>  env('SWISSECHO_FAKE_MAIL', 'admin@example.com'),
+    'fake_mail'      =>  env('SWISSECHO_FAKE_MAIL'),
     'route'     =>  env('SWISSECHO_ROUTE', 'sms'),
 
     'routes_options'    =>  [

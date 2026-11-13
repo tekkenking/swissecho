@@ -3,7 +3,6 @@
 namespace Tekkenking\Swissecho;
 
 use Exception;
-use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class SwissechoException extends Exception
@@ -15,7 +14,7 @@ class SwissechoException extends Exception
      * @param int $code
      * @param Throwable|null $previous
      */
-    public function __construct($message = "", $code = 0, Throwable $previous = null)
+    public function __construct($message = "", $code = 0, ?Throwable $previous = null)
     {
         $this->errorMsg = $message;
         parent::__construct($message, $code, $previous);
@@ -24,11 +23,20 @@ class SwissechoException extends Exception
     /**
      * Report or log an exception.
      *
-     * @return void
+     * Returning false hands this back to Laravel's own handler, which logs
+     * it at error level with the stack trace and context, and passes it to
+     * Sentry, Flare or whatever else is configured.
+     *
+     * The previous body called Log::debug() and returned void. Void means
+     * 'already reported', so Laravel skipped its own logging, and at the
+     * usual production LOG_LEVEL=error the debug line was dropped too -
+     * every Swissecho error disappeared without trace.
+     *
+     * @return bool
      */
-    public function report()
+    public function report(): bool
     {
-        Log::debug($this->errorMsg);
+        return false;
     }
 
     /**
