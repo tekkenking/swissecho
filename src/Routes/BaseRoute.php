@@ -222,9 +222,53 @@ abstract class BaseRoute
             return;
         }
 
-        if(isset($this->notifiable)) {
-            $this->msgBuilder->identifier($this->notifiable);
+        if(!isset($this->notifiable)) {
+            return;
         }
+
+        $identifier = $this->identifierForNotifiable($this->notifiable);
+
+        if($identifier !== null) {
+            $this->msgBuilder->identifier($identifier);
+        }
+    }
+
+    /**
+     * A short, stable reference to the notifiable.
+     *
+     * This used to be the notifiable object itself, which then travelled in
+     * AfterSend::$identifier and formattedResponse['identifier']. The README
+     * suggests logging that response, so the whole model went into the log
+     * context on every send. Eloquent's $hidden masks passwords, but email,
+     * phone and addresses are not hidden, and a plain object or array
+     * notifiable has no protection at all.
+     *
+     * Define routeNotificationIdentifier() on the notifiable to choose the
+     * value yourself.
+     *
+     * @param $notifiable
+     * @return string|null
+     */
+    protected function identifierForNotifiable($notifiable): ?string
+    {
+        if(is_object($notifiable) && method_exists($notifiable, 'routeNotificationIdentifier')) {
+            $identifier = $notifiable->routeNotificationIdentifier();
+
+            return $identifier === null ? null : (string) $identifier;
+        }
+
+        if(is_object($notifiable) && method_exists($notifiable, 'getKey')) {
+            $key = $notifiable->getKey();
+
+            return $key === null ? null : $notifiable::class.':'.$key;
+        }
+
+        if(is_object($notifiable) && isset($notifiable->id)) {
+            return $notifiable::class.':'.$notifiable->id;
+        }
+
+        //Better to carry no identifier than to carry the whole notifiable.
+        return null;
     }
 
     protected function msgBuilderInitForSendViaNotification($viaMethod): void
