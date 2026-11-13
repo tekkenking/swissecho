@@ -184,6 +184,8 @@ trait SwissechoGatewayTrait
      */
     protected function performRequest($ch): array
     {
+        $this->applyTransportDefaults($ch);
+
         $output = $this->responsePayload = curl_exec($ch);
 
         $errorMessage = curl_errno($ch) ? curl_error($ch) : '';
@@ -206,6 +208,58 @@ trait SwissechoGatewayTrait
         }
 
         return [true, $output];
+    }
+
+    /**
+     * Enforce TLS verification and timeouts on the gateway's handle.
+     *
+     * Applied here, after the gateway's send() has returned, so every
+     * gateway is covered and these options win over anything it set. Five
+     * gateways disabled peer verification themselves, and none but the
+     * Termii voice gateway set a timeout at all, so one hung provider could
+     * block a PHP worker for as long as the socket stayed open.
+     *
+     * @param $ch
+     * @return void
+     */
+    protected function applyTransportDefaults($ch): void
+    {
+        curl_setopt_array($ch, $this->transportOptions());
+    }
+
+    /**
+     * The cURL options enforced on every gateway request.
+     *
+     * A timeout or connect_timeout of 0 is cURL's own 'wait forever', so
+     * those are left off the handle rather than set to 0, which keeps any
+     * value a gateway set deliberately.
+     *
+     * @return array
+     */
+    protected function transportOptions(): array
+    {
+        $transport = config('swissecho.transport', []);
+
+        $verify = (bool) ($transport['verify_tls'] ?? true);
+
+        $options = [
+            CURLOPT_SSL_VERIFYPEER => $verify,
+            CURLOPT_SSL_VERIFYHOST => $verify ? 2 : 0,
+        ];
+
+        $timeout = (int) ($transport['timeout'] ?? 30);
+
+        if($timeout > 0) {
+            $options[CURLOPT_TIMEOUT] = $timeout;
+        }
+
+        $connectTimeout = (int) ($transport['connect_timeout'] ?? 10);
+
+        if($connectTimeout > 0) {
+            $options[CURLOPT_CONNECTTIMEOUT] = $connectTimeout;
+        }
+
+        return $options;
     }
 
     /**
