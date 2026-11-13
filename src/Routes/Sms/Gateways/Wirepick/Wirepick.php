@@ -15,7 +15,7 @@ class Wirepick extends BaseGateway
         $url = $this->config['url'];
         $client = $this->config['client'];
         $password = $this->config['password'];
-        $affiliate = $this->config['affliate'];
+        $affiliate = $this->config['affiliate'] ?? $this->config['affliate'] ?? null;
 
         $this->body = $this->body;
         $mobiles = implode(',', $this->to);

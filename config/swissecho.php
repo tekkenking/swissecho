@@ -34,7 +34,7 @@ return [
                         'api_key'   =>  env('TERMII_API_KEY')
                     ],
                     'webhook'   => [
-                        'secret'    => env('TERMI_WEBHOOK_SECRET'),
+                        'secret'    => env('TERMII_WEBHOOK_SECRET', env('TERMI_WEBHOOK_SECRET')),
                         'handle'    => 'webhook'
                     ]
                 ],
@@ -67,7 +67,7 @@ return [
                     'class' =>  Nigerianbulksms::class,
                     'auth'  =>  [
                         'username'  =>  env('NIGERIANBULKSMS_USERNAME'),
-                        'password'  =>  env('NIGERIANBULKSM_PASSWORD'),
+                        'password'  =>  env('NIGERIANBULKSMS_PASSWORD', env('NIGERIANBULKSM_PASSWORD')),
                     ],
                     'url'   =>  env('NIGERIANBULKSMS_URL', 'https://portal.nigeriabulksms.com/api/'),
                 ],
@@ -84,7 +84,7 @@ return [
                     'url' => env('WIREPICK_SMS_URL'),
                     'client' => env('WIREPICK_SMS_CLIENT'),
                     'password' => env('WIREPICK_SMS_PASSWORD'),
-                    'affliate' => env('WIREPICK_SMS_AFFLIATE'),
+                    'affiliate' => env('WIREPICK_SMS_AFFILIATE', env('WIREPICK_SMS_AFFLIATE')),
                 ],
                 /*'vonage'    =>  [
                     'class' =>  \App\Libs\Vonage\Sms\Send::class,
