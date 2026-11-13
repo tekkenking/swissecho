@@ -17,10 +17,16 @@ class Wirepick extends BaseGateway
         $password = $this->config['password'];
         $affiliate = $this->config['affiliate'] ?? $this->config['affliate'] ?? null;
 
-        $this->body = $this->body;
         $mobiles = implode(',', $this->to);
 
-        $data = $url."?client=".$client."&password=".$password."&affiliate=".$affiliate."&phone=".$mobiles."&text=".$this->body."&from=".$this->sender;
+        $data = $url.'?'.http_build_query([
+            'client'    => $client,
+            'password'  => $password,
+            'affiliate' => $affiliate,
+            'phone'     => $mobiles,
+            'text'      => $this->body,
+            'from'      => $this->sender,
+        ]);
 
         return $data;
     }
