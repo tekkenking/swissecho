@@ -34,7 +34,9 @@ abstract class BaseGateway
 
         $this->sender = (string) ($this->payload['sender'] ?? '');
 
-        $this->body = (int) $this->payload['message']; //The OTP code
+        //The OTP code. Cast to string, not int: (int) '012345' is 12345,
+        //which silently breaks any zero-padded or alphanumeric code.
+        $this->body = (string) $this->payload['message'];
     }
 
 }
