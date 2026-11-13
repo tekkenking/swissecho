@@ -148,11 +148,6 @@ trait SwissechoGatewayTrait
      */
     protected function execCurl($ch = null)
     {
-
-       /* if(!$ch) {
-
-        }*/
-
         try {
             //get response
             $ch = $this->hookBeforeExecCurl($ch);
@@ -162,27 +157,7 @@ trait SwissechoGatewayTrait
                 $status = true;
                 $data = ['message' => 'Mock mode enabled. No request was sent to gateway.'];
             } else {
-                //dd('should not be here');
-                $output = $this->responsePayload = curl_exec($ch);
-
-                //Print error if any
-                $isError = false;
-                $errorMessage = '';
-                if (curl_errno($ch)) {
-                    $isError = true;
-                    $errorMessage = curl_error($ch);
-                }
-                curl_close($ch);
-
-                $output = $this->hookAfterExecCurl($output);
-
-                if($isError){
-                    $data = ['error' => true , 'message' => $errorMessage];
-                }else{
-                    $data = $output;
-                }
-
-                $status = !$isError;
+                [$status, $data] = $this->performRequest($ch);
             }
 
             $this->formatResponse($status, $data);
@@ -195,6 +170,54 @@ trait SwissechoGatewayTrait
             $this->formatResponse(false, $exception->getMessage());
             AfterSend::dispatch($this->insight(), $this->getFormattedResponse(), $this->identifier);
         }
+    }
+
+    /**
+     * Execute the handle and decide whether the gateway actually accepted it.
+     *
+     * A transport error is a failure, and so is any 4xx or 5xx: without the
+     * status check a rejection such as "invalid API key" was reported to the
+     * caller as a successful send.
+     *
+     * @param $ch
+     * @return array{0: bool, 1: mixed}
+     */
+    protected function performRequest($ch): array
+    {
+        $output = $this->responsePayload = curl_exec($ch);
+
+        $errorMessage = curl_errno($ch) ? curl_error($ch) : '';
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $output = $this->hookAfterExecCurl($output);
+
+        if($errorMessage !== '') {
+            return [false, ['error' => true, 'message' => $errorMessage, 'http_code' => $httpCode]];
+        }
+
+        if($this->isHttpFailure($httpCode)) {
+            return [false, [
+                'error'     => true,
+                'message'   => 'Gateway rejected the message with HTTP '.$httpCode,
+                'http_code' => $httpCode,
+                'response'  => $output,
+            ]];
+        }
+
+        return [true, $output];
+    }
+
+    /**
+     * A code of 0 means cURL reported no status, which happens for
+     * non-HTTP handles, so only a real 4xx or 5xx counts as a failure.
+     *
+     * @param int $httpCode
+     * @return bool
+     */
+    protected function isHttpFailure(int $httpCode): bool
+    {
+        return $httpCode >= 400;
     }
 
 
