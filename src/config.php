@@ -11,6 +11,7 @@ use Tekkenking\Swissecho\Routes\Sms\Gateways\Wirepick\Wirepick;
 use Tekkenking\Swissecho\Routes\Telegram\TelegramRoute;
 use Tekkenking\Swissecho\Routes\Voice\Gateways\Termii\TermiiVoiceCall;
 use Tekkenking\Swissecho\Routes\Voice\Gateways\Textngxyz\TextngxyzVoiceCall;
+use Tekkenking\Swissecho\Routes\Whatsapp\Gateways\DirectWhatsapp\DirectWhatsapp;
 use Tekkenking\Swissecho\Routes\Whatsapp\Gateways\Kudisms\KudismsWhatsapp;
 
 return [
@@ -172,6 +173,38 @@ return [
             'default_place'  => env('SWISSECHO_DEFAULT_PLACE', null),
 
             'gateway_options'  =>  [
+                //WhatsApp Cloud API - Meta's own endpoint, no reseller.
+                //Create the app and the number at developers.facebook.com,
+                //then set the phone number id and a system user access token.
+                'directwhatsapp' => [
+                    'class'           =>  DirectWhatsapp::class,
+
+                    //Leave 'url' empty to build the documented endpoint,
+                    //https://graph.facebook.com/{version}/{phone-number-id}/messages
+                    //Set it only to pin a proxy or a different host.
+                    'url'             =>  env('WHATSAPP_CLOUD_URL'),
+                    'api_host'        =>  env('WHATSAPP_CLOUD_HOST', 'https://graph.facebook.com'),
+                    'api_version'     =>  env('WHATSAPP_CLOUD_API_VERSION', 'v21.0'),
+                    'phone_number_id' =>  env('WHATSAPP_PHONE_NUMBER_ID'),
+
+                    //Whether WhatsApp renders a preview card for a link in
+                    //the message body.
+                    'preview_url'     =>  env('WHATSAPP_PREVIEW_URL', false),
+
+                    'auth'  =>  [
+                        'access_token'  =>  env('WHATSAPP_ACCESS_TOKEN')
+                    ],
+
+                    //Free-form text only reaches a user inside the 24 hour
+                    //customer service window. Outside it WhatsApp requires
+                    //an approved template: name one here and every send uses
+                    //it, with the message body as its single body parameter.
+                    'template'  =>  [
+                        'name'      =>  env('WHATSAPP_TEMPLATE_NAME'),
+                        'language'  =>  env('WHATSAPP_TEMPLATE_LANGUAGE', 'en_US')
+                    ]
+                ],
+
                 'kudisms'    =>  [
                     'class' =>  KudismsWhatsapp::class,
                     //'sender' =>  env('KUDISMS_WHATSAPP_SENDER_ID'),
