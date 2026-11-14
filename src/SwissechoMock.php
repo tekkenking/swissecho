@@ -15,13 +15,6 @@ class SwissechoMock
 
     private array $config;
 
-    /*private mixed $mockedNotifiable;
-
-    public function setMockedNotifiable($mocked)
-    {
-        $this->mockedNotifiable = $mocked;
-    }*/
-
     private function mockBuildInfo($gatewayClass, $msgBuilder)
     {
         //No environment check: mock mode is switched on by swissecho.live

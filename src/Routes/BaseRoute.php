@@ -436,6 +436,23 @@ abstract class BaseRoute
         return $toArr;
     }
 
+    /**
+     * The sender for this route, when the channel has one.
+     *
+     * SmsRoute, VoiceRoute and WhatsappRoute override this. Slack and
+     * Telegram do not: their identity is fixed by the webhook or bot token,
+     * so there is nothing to resolve. A default here means a route that does
+     * not override it cannot fail with 'Call to undefined method' - which the
+     * inherited msgBuilderInit* methods would have done, since they are
+     * protected and reachable from those two classes.
+     *
+     * @return mixed
+     */
+    protected function prepareSender(): mixed
+    {
+        return $this->msgBuilder->sender ?? null;
+    }
+
     abstract public function sendViaNotification(): static;
 
     abstract public function directSend($routeBuilder): static;

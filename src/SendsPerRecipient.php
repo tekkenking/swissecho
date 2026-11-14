@@ -9,6 +9,11 @@ namespace Tekkenking\Swissecho;
  * multi-recipient send needs one request each. Without this, a gateway reads
  * only the first number and the rest are dropped with no error, while
  * formatResponse() still reports the whole list as delivered.
+ *
+ * Must be used alongside SwissechoGatewayTrait, whose boot() it replaces:
+ * it relies on that trait for $to, $requestPayload, $swissecho_config,
+ * processDependencies() and execCurl(), and on the using class for init()
+ * and send(). On its own it will fail at runtime.
  */
 trait SendsPerRecipient
 {
