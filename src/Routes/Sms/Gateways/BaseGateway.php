@@ -20,7 +20,7 @@ abstract class BaseGateway
         $this->payload = $this->msgBuilder->get();
         //For the sms class
         $this->to       = $this->payload['to'];
-        $this->sender   = $this->payload['sender'];
+        $this->sender   = (string) ($this->payload['sender'] ?? '');
         $this->body     = $this->payload['message'];
         $this->config   = $gateway_config;
 

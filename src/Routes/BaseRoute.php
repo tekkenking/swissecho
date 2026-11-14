@@ -121,7 +121,7 @@ abstract class BaseRoute
 
     protected function gatewaySender()
     {
-        return $this->gatewayConfig()['sender'] ?? 'null';
+        return $this->gatewayConfig()['sender'] ?? $this->config['sender'] ?? null;
     }
 
     protected function setPlace(): void

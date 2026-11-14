@@ -14,13 +14,13 @@ class Nigerianbulksms extends BaseGateway
     {
         $username = $this->config['auth']['username'];
         $password = $this->config['auth']['password'];
-        $this->body = urlencode($this->body);
+        $encodedBody = urlencode($this->body);
 
         //Preparing post parameters
         $pd = [
             'username'  => $username,
             'password'  => $password,
-            'message'   => $this->body,
+            'message'   => $encodedBody,
             'sender'    => $this->sender,
             'mobiles'   => str_replace('+', '', implode(',',$this->to)),
             'verbose'   =>  'true'

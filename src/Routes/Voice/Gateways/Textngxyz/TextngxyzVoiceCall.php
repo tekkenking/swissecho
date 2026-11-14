@@ -25,7 +25,7 @@ class TextngxyzVoiceCall extends BaseGateway
 
     public function send($data): \CurlHandle
     {
-        $curl = curl_init($url);
+        $curl = curl_init($this->config['url']);
         curl_setopt($curl, CURLOPT_POST, true);
         curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($data));
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
