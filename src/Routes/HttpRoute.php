@@ -33,8 +33,15 @@ trait HttpRoute
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        $transport      = config('swissecho.transport', []);
+        $verify         = (bool) ($transport['verify_tls'] ?? true);
+        $timeout        = (int) ($transport['timeout'] ?? 30);
+        $connectTimeout = (int) ($transport['connect_timeout'] ?? 10);
+
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $verify);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $verify ? 2 : 0);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $timeout > 0 ? $timeout : 30);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $connectTimeout > 0 ? $connectTimeout : 10);
 
         $output   = curl_exec($ch);
         $error    = curl_error($ch);

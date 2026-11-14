@@ -21,6 +21,16 @@ return [
     'fake_mail'      =>  env('SWISSECHO_FAKE_MAIL', 'admin@example.com'),
     'route'     =>  env('SWISSECHO_ROUTE', 'sms'),
 
+    //Applied to every gateway request. verify_tls should stay true: these
+    //requests carry API keys, and some gateways carry an account password.
+    //Turn it off only for a provider with a genuinely broken certificate,
+    //and only while you chase them about it.
+    'transport' => [
+        'verify_tls'      => env('SWISSECHO_VERIFY_TLS', true),
+        'timeout'         => env('SWISSECHO_TIMEOUT', 30),
+        'connect_timeout' => env('SWISSECHO_CONNECT_TIMEOUT', 10),
+    ],
+
     'routes_options'    =>  [
         'sms'           =>  [
             'default_place'    =>  env('SWISSECHO_DEFAULT_PLACE', null),
