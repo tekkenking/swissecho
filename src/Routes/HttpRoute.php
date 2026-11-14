@@ -33,15 +33,8 @@ trait HttpRoute
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $transport      = config('swissecho.transport', []);
-        $verify         = (bool) ($transport['verify_tls'] ?? true);
-        $timeout        = (int) ($transport['timeout'] ?? 30);
-        $connectTimeout = (int) ($transport['connect_timeout'] ?? 10);
 
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $verify);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $verify ? 2 : 0);
-        curl_setopt($ch, CURLOPT_TIMEOUT, $timeout > 0 ? $timeout : 30);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $connectTimeout > 0 ? $connectTimeout : 10);
+        $this->applyTransportOptions($ch);
 
         $output   = curl_exec($ch);
         $error    = curl_error($ch);
@@ -53,10 +46,41 @@ trait HttpRoute
             return ['error' => true, 'message' => $error, 'http_code' => $httpCode];
         }
 
+        return $this->interpretResponse((string) $output, $httpCode);
+    }
+
+    /**
+     * Apply the shared TLS and timeout settings to the handle.
+     *
+     * @param  \CurlHandle  $ch
+     * @return void
+     */
+    protected function applyTransportOptions(\CurlHandle $ch): void
+    {
+        $transport      = config('swissecho.transport', []);
+        $verify         = (bool) ($transport['verify_tls'] ?? true);
+        $timeout        = (int) ($transport['timeout'] ?? 30);
+        $connectTimeout = (int) ($transport['connect_timeout'] ?? 10);
+
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $verify);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $verify ? 2 : 0);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $timeout > 0 ? $timeout : 30);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $connectTimeout > 0 ? $connectTimeout : 10);
+    }
+
+    /**
+     * Turn the raw body and status into the response envelope.
+     *
+     * @param  string  $output
+     * @param  int  $httpCode
+     * @return array
+     */
+    protected function interpretResponse(string $output, int $httpCode): array
+    {
         //is_array, not ??: a scalar JSON body such as 404 or "ok" decodes to
         //an int or a string, which would be returned from a method declared
         //: array and fail under strict_types.
-        $decoded = json_decode((string) $output, true);
+        $decoded = json_decode($output, true);
         $body    = is_array($decoded) ? $decoded : ['raw' => $output];
 
         //Without this, a revoked Slack webhook replying 403 invalid_token

@@ -94,6 +94,27 @@ class TelegramRoute extends BaseRoute
             throw new SwissechoException('Telegram: message body is required');
         }
 
+        //Mock before the token check, as SlackRoute does. Requiring a bot
+        //token in order to produce a mock log meant local development
+        //without one threw, while the same setup mocked fine on Slack.
+        if (!($this->config['live'] ?? false)) {
+            $this->handleHttpMock();
+            return;
+        }
+
+        $this->dispatchAfterSendEvent($this->postMessage($chatId, $message));
+    }
+
+    /**
+     * Post to the Bot API.
+     *
+     * @param  mixed  $chatId
+     * @param  string  $message
+     * @return array
+     * @throws SwissechoException
+     */
+    protected function postMessage($chatId, string $message): array
+    {
         $routeConfig = $this->config['routes_options']['telegram'] ?? [];
         $token       = $routeConfig['auth']['token'] ?? null;
 
@@ -101,28 +122,21 @@ class TelegramRoute extends BaseRoute
             throw new SwissechoException('Telegram: configure TELEGRAM_BOT_TOKEN');
         }
 
-        if (!($this->config['live'] ?? false)) {
-            $this->handleHttpMock();
-            return;
-        }
-
-        $apiUrl = $routeConfig['url']
-            ?? ('https://api.telegram.org/bot' . $token . '/sendMessage');
-
         $this->requestPayload = [
             'chat_id' => $chatId,
             'text'    => $message,
         ];
 
         $parseMode = $routeConfig['parse_mode'] ?? null;
+
         if ($parseMode) {
             $this->requestPayload['parse_mode'] = $parseMode;
         }
 
-        $response = $this->postJson($apiUrl, $this->requestPayload, [
-            'Content-Type: application/json',
-        ]);
-
-        $this->dispatchAfterSendEvent($response);
+        return $this->postJson(
+            $routeConfig['url'] ?? ('https://api.telegram.org/bot' . $token . '/sendMessage'),
+            $this->requestPayload,
+            ['Content-Type: application/json']
+        );
     }
 }

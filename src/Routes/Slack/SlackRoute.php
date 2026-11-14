@@ -94,20 +94,35 @@ class SlackRoute extends BaseRoute
             return;
         }
 
+        $this->dispatchAfterSendEvent($this->postMessage($message));
+    }
+
+    /**
+     * Post through whichever credential is configured.
+     *
+     * @param  string  $message
+     * @return array
+     * @throws SwissechoException
+     */
+    protected function postMessage(string $message): array
+    {
         $routeConfig = $this->config['routes_options']['slack'] ?? [];
         $webhookUrl  = $routeConfig['auth']['webhook'] ?? null;
         $token       = $routeConfig['auth']['token'] ?? null;
-        $apiUrl      = $routeConfig['url'] ?? 'https://slack.com/api/chat.postMessage';
 
         if ($webhookUrl) {
             // Incoming Webhook mode — recipient is embedded in the webhook URL.
             $this->requestPayload = ['text' => $message];
-            $response = $this->postJson($webhookUrl, $this->requestPayload, [
+
+            return $this->postJson($webhookUrl, $this->requestPayload, [
                 'Content-Type: application/json',
             ]);
-        } elseif ($token) {
+        }
+
+        if ($token) {
             // Bot Token mode — requires a channel.
             $recipient = $this->msgBuilder->to;
+
             if (!$recipient) {
                 throw new SwissechoException('Slack: recipient channel is required when using a bot token');
             }
@@ -116,16 +131,17 @@ class SlackRoute extends BaseRoute
                 'channel' => $recipient,
                 'text'    => $message,
             ];
-            $response = $this->postJson($apiUrl, $this->requestPayload, [
-                'Content-Type: application/json',
-                'Authorization: Bearer ' . $token,
-            ]);
-        } else {
-            throw new SwissechoException(
-                'Slack: configure SLACK_WEBHOOK_URL or SLACK_BOT_TOKEN'
+
+            return $this->postJson(
+                $routeConfig['url'] ?? 'https://slack.com/api/chat.postMessage',
+                $this->requestPayload,
+                [
+                    'Content-Type: application/json',
+                    'Authorization: Bearer ' . $token,
+                ]
             );
         }
 
-        $this->dispatchAfterSendEvent($response);
+        throw new SwissechoException('Slack: configure SLACK_WEBHOOK_URL or SLACK_BOT_TOKEN');
     }
 }
