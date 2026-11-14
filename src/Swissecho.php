@@ -228,28 +228,35 @@ class Swissecho
             ->gateway($this->gateway);
 
         if($this->isCallBack) {
-            //check if "to" was not set at echoBuilderMessage and $this->to property was set
-            if(!$this->echoBuilderMessage->to && $this->to) {
-                //If its was not set, then we set the $this->to
-                $this->echoBuilderMessage->to($this->to);
-            }
-
-            //check if "to" was not set at echoBuilderMessage and $this->to property was set
-            if(!$this->echoBuilderMessage->sender && $this->sender) {
-                //If its was not set, then we set the $this->to
-                $this->echoBuilderMessage->sender($this->sender);
-            }
-
-            return $prepped->bootByDirect($this->echoBuilderMessage);
-        } else {
-            if(!isset($this->notification)) {
-                throw new SwissechoException('Nothing to send: give route() a message or a callback, or send a notification.');
-            }
-
-            $this->notifiable = $this->directNotifiable ?? $this->notifiable;
-            return $prepped->bootByNotification($this->notifiable, $this->notification);
+            return $prepped->bootByDirect($this->builderForDirectSend());
         }
 
+        if(!isset($this->notification)) {
+            throw new SwissechoException('Nothing to send: give route() a message or a callback, or send a notification.');
+        }
+
+        $this->notifiable = $this->directNotifiable ?? $this->notifiable;
+
+        return $prepped->bootByNotification($this->notifiable, $this->notification);
+    }
+
+    /**
+     * Fill in anything the callback left unset from the properties.
+     *
+     * @return SwissechoMessage
+     */
+    private function builderForDirectSend(): SwissechoMessage
+    {
+        //The callback wins; these only fill the gaps it left.
+        if(!$this->echoBuilderMessage->to && $this->to) {
+            $this->echoBuilderMessage->to($this->to);
+        }
+
+        if(!$this->echoBuilderMessage->sender && $this->sender) {
+            $this->echoBuilderMessage->sender($this->sender);
+        }
+
+        return $this->echoBuilderMessage;
     }
 
     /**
