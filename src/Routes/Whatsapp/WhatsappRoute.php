@@ -12,7 +12,7 @@ class WhatsappRoute extends BaseRoute
 
 
     /**
-     * @return WhatsappRoute
+     * @return static
      * @throws SwissechoException
      */
     public function sendViaNotification(): static

@@ -26,9 +26,6 @@ abstract class BaseRoute
      */
     protected string $route;
 
-    /**
-     * @var mixed
-     */
     protected SwissechoMessage $msgBuilder;
 
     /**
@@ -41,9 +38,6 @@ abstract class BaseRoute
      */
     private array $gatewayConfig;
 
-    /**
-     * @var mixed
-     */
     protected string $defaultPlace;
 
     protected string $place;
@@ -70,11 +64,6 @@ abstract class BaseRoute
         $this->config = config('swissecho');
     }
 
-    private function getDefaultRoute()
-    {
-        return $this->config['route'];
-    }
-
     /**
      * @param string $route
      * @return $this
@@ -82,7 +71,7 @@ abstract class BaseRoute
     public function route(string $route): static
     {
         $this->loadConfig();
-        $this->route = strtolower($route ?? $this->getDefaultRoute());
+        $this->route = strtolower($route);
         return $this;
     }
 
@@ -240,7 +229,7 @@ abstract class BaseRoute
     /**
      * @param $notifiable
      * @param Notification $notification
-     * @return void
+     * @return SendResult|null
      */
     public function bootByNotification($notifiable, Notification $notification): ?SendResult
     {
@@ -261,7 +250,8 @@ abstract class BaseRoute
 
     /**
      * @param $routeBuilder
-     * @return void
+     * @param $notifiable
+     * @return SendResult|null
      */
     public function bootByDirect($routeBuilder, $notifiable = null): ?SendResult
     {
@@ -502,7 +492,7 @@ abstract class BaseRoute
     protected function addPhoneCodeToPhoneNumberArr(array $tos, $phonecode): array
     {
         $toArr = [];
-        foreach ($tos ?? [] as $number) {
+        foreach ($tos as $number) {
             //A trailing comma in the recipient list, as a CSV column from the
             //database often has, left an empty entry here, and
             //addCountryCodeToPhoneNumber('', '234') returns '234' - a billed

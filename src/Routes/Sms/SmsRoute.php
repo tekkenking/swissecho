@@ -9,7 +9,7 @@ class SmsRoute extends BaseRoute
 {
 
     /**
-     * @return SmsRoute
+     * @return static
      * @throws SwissechoException
      */
     public function sendViaNotification(): static

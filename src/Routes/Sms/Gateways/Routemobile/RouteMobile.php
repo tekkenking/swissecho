@@ -41,7 +41,7 @@ class RouteMobile extends BaseGateway
         $ch = curl_init();
         curl_setopt($ch,CURLOPT_URL, $data);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HEADER, 0);
+        curl_setopt($ch, CURLOPT_HEADER, false);
         return $ch;
     }
 

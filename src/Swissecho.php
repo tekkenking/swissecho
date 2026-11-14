@@ -12,7 +12,7 @@ class Swissecho
 {
 
     /**
-     * @var
+     * @var mixed
      */
     private $notifiable;
 

@@ -19,7 +19,7 @@ trait SwissechoGatewayTrait
     public mixed $to;
 
     /**
-     * @var string|mixed
+     * @var string
      */
     public string $sender = '';
 
@@ -72,7 +72,7 @@ trait SwissechoGatewayTrait
     }
 
     /**
-     * @return void
+     * @return self
      */
     public function boot(): self
     {
@@ -98,12 +98,7 @@ trait SwissechoGatewayTrait
      */
     protected function processDependencies(): void
     {
-        if(!method_exists($this, 'checkDependencies')) {
-            return;
-        }
-
-        $dependenciesArr = $this->checkDependencies();
-        foreach ($dependenciesArr ?? [] as $depArr) {
+        foreach ($this->checkDependencies() as $depArr) {
             $className = $depArr[0];
             $composerRequire = $depArr[1];
 
