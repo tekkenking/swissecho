@@ -6,6 +6,8 @@ use Tekkenking\Swissecho\Routes\Sms\Gateways\Routemobile\RouteMobile;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Smsbroadcast\SmsBroadCastDotComDotAu;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Termii\Termii;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Tnz\Tnz;
+use Tekkenking\Swissecho\Routes\Sms\Gateways\Twilio\Twilio;
+use Tekkenking\Swissecho\Routes\Sms\Gateways\Vonage\Vonage;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Wirepick\Wirepick;
 use Tekkenking\Swissecho\Routes\Voice\Gateways\Termii\TermiiVoiceCall;
 use Tekkenking\Swissecho\Routes\Voice\Gateways\Textngxyz\TextngxyzVoiceCall;
@@ -114,13 +116,35 @@ return [
                     'password' => env('WIREPICK_SMS_PASSWORD'),
                     'affiliate' => env('WIREPICK_SMS_AFFILIATE', env('WIREPICK_SMS_AFFLIATE')),
                 ],
-                /*'vonage'    =>  [
-                    'class' =>  \App\Libs\Vonage\Sms\Send::class,
+                //Twilio Programmable Messaging. One request per recipient.
+                'twilio' => [
+                    'class'       =>  Twilio::class,
+                    'account_sid' =>  env('TWILIO_ACCOUNT_SID'),
+                    'auth'        =>  [
+                        'token'   =>  env('TWILIO_AUTH_TOKEN')
+                    ],
+
+                    //Who the message is from: a Twilio number, or leave it
+                    //empty and name a Messaging Service, which picks the
+                    //number itself. A Messaging Service wins if both are set.
+                    'from'                  =>  env('TWILIO_FROM'),
+                    'messaging_service_sid' =>  env('TWILIO_MESSAGING_SERVICE_SID'),
+
+                    //Only to pin a proxy. Left empty, the documented
+                    //Messages endpoint for the account is used.
+                    'url'         =>  env('TWILIO_URL'),
+                ],
+
+                //Vonage SMS API (formerly Nexmo). One request per recipient.
+                'vonage' => [
+                    'class' =>  Vonage::class,
+                    'url'   =>  env('VONAGE_URL', 'https://rest.nexmo.com/sms/json'),
+                    'from'  =>  env('VONAGE_FROM'),
                     'auth'  =>  [
-                        'api_key'   =>  env('VONAGE_API_KEY'),
-                        'api_token'   =>  env('VONAGE_API_TOKEN'),
+                        'api_key'    =>  env('VONAGE_API_KEY'),
+                        'api_secret' =>  env('VONAGE_API_SECRET')
                     ]
-                ]*/
+                ],
             ],
             'places'  =>  [
                 'nga'   =>  [

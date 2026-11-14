@@ -48,9 +48,12 @@ trait SwissechoGatewayTrait
     private $responsePayload;
 
     /**
-     * @var array
+     * Protected, not private: a gateway that composes SendsPerRecipient in a
+     * subclass sets this once per request.
+     *
+     * @var mixed
      */
-    private $requestPayload;
+    protected $requestPayload;
 
     protected SwissechoMessage $msgBuilder;
     /**
