@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tekkenking\Swissecho;
 
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -25,21 +24,23 @@ class SwissechoMock
 
     private function mockBuildInfo($gatewayClass, $msgBuilder)
     {
-        $build = '';
-        if(App::environment('local')) {
-            $to = is_array($msgBuilder->to) ? implode(',', $msgBuilder->to) : (string) $msgBuilder->to;
-            $build  = "From: ". $msgBuilder->from."\n";
+        //No environment check: mock mode is switched on by swissecho.live
+        //being false, not by the app environment. Gating this on 'local'
+        //meant that on staging the build was an empty string, mockSend()
+        //skipped the whole branch, and nothing was logged or mailed while
+        //the send was still reported as successful.
+        $to = is_array($msgBuilder->to) ? implode(',', $msgBuilder->to) : (string) $msgBuilder->to;
+        $build  = "From: ". $msgBuilder->from."\n";
             $build .= "To: ". $to."\n";
-            $build .= "Message: ". $msgBuilder->message . "\n";
-            $build .= "============================================\n";
-            $build .= "BUILD INFO: (Not included in the actual BODY):\n";
-            $build .= "============================================\n";
-            $build .= "Country (for ".$msgBuilder->route." route): ". $msgBuilder->place ."\n";
-            $build .= "PhoneCode (for ".$msgBuilder->route." route): ". $msgBuilder->phonecode ."\n";
-            $build .= "Route: ". $msgBuilder->route ."\n";
-            $build .= "Gateway: ". $msgBuilder->gateway ."\n";
-            $build .= "Gateway Class: ". $gatewayClass ."\n";
-        }
+        $build .= "Message: ". $msgBuilder->message . "\n";
+        $build .= "============================================\n";
+        $build .= "BUILD INFO: (Not included in the actual BODY):\n";
+        $build .= "============================================\n";
+        $build .= "Country (for ".$msgBuilder->route." route): ". $msgBuilder->place ."\n";
+        $build .= "PhoneCode (for ".$msgBuilder->route." route): ". $msgBuilder->phonecode ."\n";
+        $build .= "Route: ". $msgBuilder->route ."\n";
+        $build .= "Gateway: ". $msgBuilder->gateway ."\n";
+        $build .= "Gateway Class: ". $gatewayClass ."\n";
 
         return $build;
     }
@@ -48,7 +49,16 @@ class SwissechoMock
     {
         $this->config = config('swissecho');
         $buildMock = $this->mockBuildInfo($gatewayClass, $msgBuilder);
-        $mockMethod = 'mockBy'.Str::studly($this->config['fake']);
+        $mockMethod = 'mockBy'.Str::studly($this->config['fake'] ?? 'log');
+
+        //Without this, a typo such as SWISSECHO_FAKE=logs produced
+        //'Call to undefined method ...::mockByLogs()', an Error rather than
+        //an Exception, so nothing downstream could catch it.
+        if(!method_exists($this, $mockMethod)) {
+            throw new SwissechoException(
+                'Swissecho: unknown mock driver "'.$this->config['fake'].'". Set SWISSECHO_FAKE to log or mail.'
+            );
+        }
 
         if($buildMock) {
             $this->$mockMethod($buildMock, $msgBuilder);
@@ -70,6 +80,12 @@ class SwissechoMock
 
     public function mockByMail($buildMock, $msgBuilder)
     {
+        if(empty($this->config['fake_mail'])) {
+            throw new SwissechoException(
+                'Swissecho: SWISSECHO_FAKE=mail needs SWISSECHO_FAKE_MAIL set to an address you own.'
+            );
+        }
+
         $to = is_array($msgBuilder->to) ? implode(',', $msgBuilder->to) : (string) $msgBuilder->to;
         Mail::raw($buildMock, function($message) use ($msgBuilder, $to) {
             $message->to([

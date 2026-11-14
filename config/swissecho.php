@@ -24,7 +24,7 @@ return [
     'redact_secrets' => env('SWISSECHO_REDACT_SECRETS', true),
 
     'fake'      =>  env('SWISSECHO_FAKE', 'log'), //mail
-    'fake_mail'      =>  env('SWISSECHO_FAKE_MAIL', 'admin@example.com'),
+    'fake_mail'      =>  env('SWISSECHO_FAKE_MAIL'),
     'route'     =>  env('SWISSECHO_ROUTE', 'sms'),
 
     //Applied to every gateway request. verify_tls should stay true: these
