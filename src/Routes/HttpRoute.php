@@ -19,6 +19,19 @@ use Tekkenking\Swissecho\SwissechoMock;
 trait HttpRoute
 {
     /**
+     * Whether the recipient the caller asked for was actually used.
+     *
+     * A boolean rather than a nullable "reported recipient", because a
+     * deliberate null is indistinguishable from unset through ??. A route
+     * sets this false when it could not honour the recipient it was given,
+     * so the AfterSend event does not claim a destination that was never
+     * sent.
+     *
+     * @var bool
+     */
+    protected bool $reportsRequestedRecipient = true;
+
+    /**
      * Perform a JSON POST request via cURL.
      *
      * @param  string  $url
@@ -123,7 +136,10 @@ trait HttpRoute
 
         $status = $mocked || (!$hasError && $ok);
 
-        $to = $this->msgBuilder->to;
+        //A route may know the recipient was not actually used - Slack's
+        //webhook mode cannot send a channel - and must not report one that
+        //never left the process.
+        $to = $this->reportsRequestedRecipient ? $this->msgBuilder->to : null;
 
         $formattedResponse = [
             'status'           => $status,
