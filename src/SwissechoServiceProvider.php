@@ -40,7 +40,11 @@ class SwissechoServiceProvider extends ServiceProvider
             'swissecho'
         );
 
-        $this->app->singleton('swissecho', function () {
+        //bind, not singleton: a fresh instance per resolve. Swissecho gathers
+        //the route, gateway, recipient and body as state before go(), and as
+        //a singleton that state outlived the send - which is how one
+        //person's message came to be delivered to another's number.
+        $this->app->bind('swissecho', function () {
             return new Swissecho();
         });
     }

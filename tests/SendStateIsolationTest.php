@@ -27,13 +27,11 @@ class SendStateIsolationTest extends TestCase
         $app['config']->set('swissecho.fake', 'log');
         $app['config']->set('app.env', 'local');
 
-        //The whatsapp leg of this test goes through the default gateway,
-        //kudisms, which now requires the template code registered on the
-        //account rather than the placeholder it used to send.
-        $app['config']->set(
-            'swissecho.routes_options.whatsapp.gateway_options.kudisms.template_code',
-            'test_template'
-        );
+        //A default sender, as any real install has. Gateways that need one
+        //refuse to send without it.
+        $app['config']->set('swissecho.sender', 'MyApp');
+        $app['config']->set('swissecho.routes_options.whatsapp.gateway_options.directwhatsapp.phone_number_id', '123456789');
+        $app['config']->set('swissecho.routes_options.whatsapp.gateway_options.directwhatsapp.auth.access_token', 'test-token');
     }
 
     private function resolvedRoute(Swissecho $swissecho): object

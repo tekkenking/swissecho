@@ -80,7 +80,7 @@ class SwissechoMock
         }
 
         $to = is_array($msgBuilder->to) ? implode(',', $msgBuilder->to) : (string) $msgBuilder->to;
-        Mail::raw($buildMock, function($message) use ($msgBuilder, $to) {
+        Mail::raw($buildMock, function($message) use ($to) {
             $message->to([
                 $this->config['fake_mail']
             ])->subject('Mock: ['.$to.']');

@@ -21,6 +21,10 @@ class AuditCloseOutTest extends TestCase
         $app['config']->set('swissecho.live', false);
         $app['config']->set('swissecho.fake', 'log');
         $app['config']->set('app.env', 'local');
+
+        //A default sender, as any real install has. Gateways that need one
+        //refuse to send without it.
+        $app['config']->set('swissecho.sender', 'MyApp');
         $app['config']->set('swissecho.routes_options.sms.default_place', 'nga');
         $app['config']->set('swissecho.routes_options.slack.auth.webhook', 'https://hooks.slack.com/services/T/B/x');
         $app['config']->set('swissecho.routes_options.telegram.auth.token', 'bot-token');

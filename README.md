@@ -13,11 +13,20 @@
 # Required once: every send needs a place, which chooses the gateway
 # and the dialling code. See "Geo-Routing" below.
 SWISSECHO_DEFAULT_PLACE=nga
+
+# The sender ID recipients see. Some gateways refuse to send without one.
+SWISSECHO_SENDER=MyApp
 ```
 
 ```php
 // One line — send an SMS through your default gateway
-swissecho()->quick('2348012345678', 'Your OTP code is 1234');
+$result = swissecho()->quick('2348012345678', 'Your OTP code is 1234');
+
+if ($result->success) {
+    // $result->messageId is the provider's own ID for the message
+} else {
+    // $result->errorCode and $result->errorMessage say why
+}
 
 // Or take full control of channel, recipients, gateway and sender
 swissecho()->route('sms', function ($ms) {
@@ -25,6 +34,8 @@ swissecho()->route('sms', function ($ms) {
               ->content('Your order has been shipped!');
 })->gateway('termii')->sender('MyApp')->go();
 ```
+
+`$result` has the same shape whichever provider handled the send — see [The Result](#the-result).
 
 > Without a place configured, every send above raises a `SwissechoException`
 > telling you the three ways to set one. Set `SWISSECHO_DEFAULT_PLACE`, or add
@@ -36,9 +47,9 @@ Switch `'sms'` to `'whatsapp'`, `'voice'`, `'slack'` or `'telegram'` and the res
 
 | Channel | Description | Supported Gateways |
 |---|---|---|
-| **SMS** | Traditional text messages | Termii, RouteMobile, SmsBroadcast (AU), TNZ (NZ), NigerianBulkSMS, Montnets, Wirepick |
-| **Voice** | Voice OTP / voice calls | Termii, Textng.xyz |
-| **WhatsApp** | WhatsApp messaging | WhatsApp Cloud API (direct), KudiSMS |
+| **SMS** | Traditional text messages | Termii, RouteMobile, SmsBroadcast (AU), TNZ (NZ), NigerianBulkSMS, Montnets, Wirepick, Twilio, Vonage |
+| **Voice** | Voice OTP / voice calls | Textng.xyz |
+| **WhatsApp** | WhatsApp messaging | WhatsApp Cloud API (direct) |
 | **Slack** | Slack notifications | Incoming Webhook, Bot Token (`chat.postMessage`) |
 | **Telegram** | Telegram Bot messages | Telegram Bot API (`sendMessage`) |
 
@@ -49,6 +60,7 @@ Switch `'sms'` to `'whatsapp'`, `'voice'`, `'slack'` or `'telegram'` and the res
 - 🧪 **Mock mode** — In development, messages are logged to file or sent to email instead of hitting live APIs
 - 🔔 **Laravel Notification integration** — Use it as a standard Laravel notification channel
 - ⚡ **Direct sending** — Send messages without creating a Notification class
+- ✅ **One result shape** — `go()` returns success, the provider's message ID, and the error code and reason, read from each provider's own reply format
 - 📣 **Events** — An `AfterSend` event is dispatched after every message, giving you full insight into requests and responses
 - 🪝 **Webhooks** — Built-in webhook handling for provider callbacks (e.g., delivery reports)
 
@@ -61,15 +73,20 @@ Switch `'sms'` to `'whatsapp'`, `'voice'`, `'slack'` or `'telegram'` and the res
 - [Installation](#installation)
 - [Configuration](#configuration)
   - [The Default Gateway for a Route](#the-default-gateway-for-a-route)
+- [Recipients and Sender IDs](#recipients-and-sender-ids)
+- [Twilio and Vonage](#twilio-and-vonage)
+- [TNZ](#tnz)
 - [WhatsApp Gateways](#whatsapp-gateways)
 - [Transport, TLS and Timeouts](#transport-tls-and-timeouts)
 - [Usage](#usage)
-- [SwissechoMessage API Reference](#swissechomessage-api-reference)
+- [The Result](#the-result)
+- [API Reference](#api-reference)
 - [Mock Mode (Development & Testing)](#mock-mode-development--testing)
 - [Events](#events)
 - [Webhooks](#webhooks)
 - [Helper Functions](#helper-functions)
 - [Adding a Custom SMS Gateway](#-adding-a-custom-sms-gateway)
+- [Provider Test Status](#provider-test-status)
 - [License](#license)
 
 ---
@@ -78,8 +95,8 @@ Switch `'sms'` to `'whatsapp'`, `'voice'`, `'slack'` or `'telegram'` and the res
 
 | Dependency | Supported Versions |
 |---|---|
-| **PHP** | ^8.1 |
-| **Laravel** | 11.x, 12.x, 13.x |
+| **PHP** | ^8.2 |
+| **Laravel** | 12.x, 13.x |
 | **PHP extension** | `ext-curl` |
 
 ---
@@ -103,13 +120,13 @@ Add these to your `.env` file. Only configure the gateways you plan to use:
 ```dotenv
 # ── Core Settings ──────────────────────────────────────────
 SWISSECHO_ENABLED=false        # Set to true for live/production sending
-SWISSECHO_SENDER=MyApp         # Default sender name
+SWISSECHO_SENDER=MyApp         # Default sender ID, used when the message and the gateway set none
 SWISSECHO_FAKE=log             # Mock mode: "log" (writes to file) or "mail" (sends email)
 SWISSECHO_FAKE_MAIL=           # Required when SWISSECHO_FAKE=mail. An address you own.
 SWISSECHO_ROUTE=sms            # Default route/channel: sms, voice, whatsapp, slack, telegram
 SWISSECHO_SMS_GATEWAY=termii        # Default gateway for the sms route
-SWISSECHO_VOICE_GATEWAY=termii      # Default gateway for the voice route
-SWISSECHO_WHATSAPP_GATEWAY=kudisms  # Default gateway for the whatsapp route
+SWISSECHO_VOICE_GATEWAY=textngxyz   # Default gateway for the voice route
+SWISSECHO_WHATSAPP_GATEWAY=directwhatsapp  # Default gateway for the whatsapp route
 SWISSECHO_DEFAULT_PLACE=nga    # Required unless every send sets ->place() or the notifiable has routeNotificationPlace()
 
 # ── Transport ──────────────────────────────────────────────
@@ -118,7 +135,7 @@ SWISSECHO_TIMEOUT=30           # Seconds to wait for a response. 0 means wait fo
 SWISSECHO_CONNECT_TIMEOUT=10   # Seconds to wait for the connection itself
 SWISSECHO_REDACT_SECRETS=true  # Mask credentials in the AfterSend event payload
 
-# ── Termii (SMS & Voice) ──────────────────────────────────
+# ── Termii (SMS) ──────────────────────────────────────────
 TERMII_API_KEY=your_api_key
 TERMII_SENDER_ID=YourSender
 TERMII_URL=https://api.ng.termii.com/api/sms/send
@@ -136,8 +153,8 @@ SMSBRC_DOTCOM_DOT_AU_PASSWORD=your_password
 SMSBRC_DOTCOM_DOT_AU_URL=https://api.smsbroadcast.com.au/...
 
 # ── TNZ (New Zealand) ─────────────────────────────────────
-TNZ_API_KEY=your_api_key
-TNZ_URL=https://api.tnz.co.nz/...
+TNZ_AUTH_TOKEN=your_auth_token      # The JWT auth token from the TNZ dashboard (REST API v3.00)
+TNZ_URL=                            # Optional. Defaults to https://api.tnz.co.nz/api/v3.00/sms
 
 # ── NigerianBulkSMS ───────────────────────────────────────
 NIGERIANBULKSMS_USERNAME=your_username
@@ -155,13 +172,21 @@ WIREPICK_SMS_CLIENT=your_client
 WIREPICK_SMS_PASSWORD=your_password
 WIREPICK_SMS_AFFILIATE=your_affiliate
 
+# ── Twilio ────────────────────────────────────────────────
+TWILIO_ACCOUNT_SID=ACxxxxxxxx
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_FROM=+15005550006            # This gateway's default sender: a Twilio number
+TWILIO_MESSAGING_SERVICE_SID=       # Optional. Used in place of TWILIO_FROM. A sender on the message still wins.
+TWILIO_URL=                         # Optional. Full endpoint override, e.g. a proxy.
+
+# ── Vonage ────────────────────────────────────────────────
+VONAGE_API_KEY=your_api_key
+VONAGE_API_SECRET=your_api_secret
+VONAGE_FROM=MyApp
+VONAGE_URL=                         # Optional. Defaults to https://rest.nexmo.com/sms/json
+
 # ── Textng.xyz (Voice) ────────────────────────────────────
 TEXTNGXYZ_API_KEY=your_api_key
-
-# ── KudiSMS (WhatsApp) ────────────────────────────────────
-KUDISMS_API_KEY=your_api_key
-KUDISMS_URL=your_url
-KUDISMS_TEMPLATE_CODE=         # Required. The template registered on your Kudisms account.
 
 # ── WhatsApp Cloud API (direct, no reseller) ──────────────
 WHATSAPP_PHONE_NUMBER_ID=      # From your WhatsApp app at developers.facebook.com
@@ -214,8 +239,8 @@ Each route with more than one gateway has a default, set per route:
 
 ```dotenv
 SWISSECHO_SMS_GATEWAY=termii
-SWISSECHO_VOICE_GATEWAY=termii
-SWISSECHO_WHATSAPP_GATEWAY=kudisms
+SWISSECHO_VOICE_GATEWAY=textngxyz
+SWISSECHO_WHATSAPP_GATEWAY=directwhatsapp
 ```
 
 That default is used when the resolved `place` names no gateway of its own. **A place's gateway always wins**, which is the whole point of geo-routing — see the next section. And naming a gateway on the send wins over both:
@@ -286,44 +311,148 @@ If no default is configured anywhere and the notifiable doesn't have `routeNotif
 
 ---
 
-## WhatsApp Gateways
+## Recipients and Sender IDs
 
-Two gateways serve the `whatsapp` route, and **they need completely different credentials**:
+### Phone numbers
 
-| Gateway | Needs | Default? |
-|---|---|---|
-| `kudisms` | `KUDISMS_API_KEY`, `KUDISMS_URL`, `KUDISMS_TEMPLATE_CODE` | yes |
-| `directwhatsapp` | `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN` | no |
-
-`KUDISMS_TEMPLATE_CODE` applies to `kudisms` only. The Cloud API gateway has nothing to do with Kudisms and does not read it.
-
-### Choosing the Cloud API gateway
-
-Naming it on the send always works:
+Recipients are put into international form for you, using the dialling code of the send's place. With place `nga`, all of these reach the gateway as `2348012345678`:
 
 ```php
-swissecho()->route('whatsapp', fn ($ms) => $ms->to('2348012345678')->content('hi'))
-    ->gateway('directwhatsapp')
-    ->go();
+->to('08012345678')
+->to('2348012345678')
+->to('+234 801 234 5678')
+->to('(0801) 234-5678')
 ```
 
-To make it the default instead, **two settings matter, not one.** `SWISSECHO_WHATSAPP_GATEWAY` sets the route's default, but a `place` overrides it — and `nga` is mapped to `kudisms` out of the box:
+Several recipients go in one string, separated by commas, or as an array.
+
+**Write a number from another country with a `+`.** `->to('+447911123456')` is sent as given whatever the place is. Without the `+` it cannot be told apart from a local number, so the place's code is added in front of it.
+
+Formatting is done by libphonenumber where it recognises the number. It is never a gate: a number it does not recognise is still formatted the simple way and sent, and the provider decides.
+
+### Sender IDs
+
+The sender is taken from the first of these that is set:
+
+1. `->sender()` on the message
+2. the notifiable's `routeNotificationSmsSender()`, `routeNotificationVoiceSender()` or `routeNotificationWhatsappSender()`
+3. the `sender` key on the gateway in `config/swissecho.php`
+4. `SWISSECHO_SENDER`
+
+A notifiable method that returns nothing is skipped, so the next in the list applies.
+
+That order is what lets one application send on behalf of many businesses. The platform's own name is the default in `SWISSECHO_SENDER`, and each business's name comes from the notifiable, or is set on the message:
 
 ```php
-// config/swissecho.php
-'whatsapp' => [
-    'gateway' => env('SWISSECHO_WHATSAPP_GATEWAY', 'kudisms'),
-    'places'  => [
-        'nga' => ['phonecode' => '+234', 'gateway' => 'directwhatsapp'],  // change this too
-    ],
+class Customer extends Model
+{
+    use Notifiable;
+
+    public function routeNotificationSmsSender(): ?string
+    {
+        return $this->business->sms_sender;   // "PartyShop", not the platform's name
+    }
+
+    public function routeNotificationPlace(): string
+    {
+        return $this->country;                // "nga", "usa", "gbr" - picks the gateway too
+    }
+}
+```
+
+With `nga` mapped to one gateway and `usa` to another under `places`, the same `$customer->notify(...)` goes out through the right provider for each customer's country, carrying the right business's name.
+
+The sender is sent exactly as given. Two optional keys on any gateway control what is allowed:
+
+```php
+'termii' => [
+    // ...
+    'requires_sender'   => true,  // stop with a clear error if no sender is set anywhere
+    'sender_max_length' => 11,    // refuse a longer sender instead of letting the provider reject it
 ],
 ```
 
-Setting the variable alone leaves Nigerian numbers going through Kudisms. Alternatively drop the `gateway` key from the place and let the route default apply.
+`requires_sender` is on by default for `termii`, `routemobile` and `smsbroadcast`, whose providers reject a message without one. `sender_max_length` is off unless you set it; GSM allows 11 characters for an alphanumeric sender.
 
-> **Note.** Set `SWISSECHO_WHATSAPP_GATEWAY`, not `SWISSECHO_ROUTE_GATEWAY`. The latter is kept working only as a fallback for this route, and naming an SMS gateway such as `termii` in either now raises a clear `SwissechoException` rather than failing on an undefined key.
+> **Changed in 1.3.0.** Senders used to be cut to 10 characters silently. They are now sent whole, so a sender longer than 10 characters that was being shortened will go out in full.
 
-Both send **one request per recipient**, because every WhatsApp API here takes a single recipient. A send to three numbers produces three requests and three `AfterSend` events, each naming the number it went to.
+---
+
+## Twilio and Vonage
+
+Both are gateways on the `sms` route. Name one on a send, make it the route's default with `SWISSECHO_SMS_GATEWAY`, or map a place to it:
+
+```php
+// config/swissecho.php, under routes_options.sms.places
+'usa' => ['gateway' => 'twilio', 'phonecode' => '1'],
+'gbr' => ['gateway' => 'vonage', 'phonecode' => '44'],
+```
+
+Both make **one request per recipient**, so a send to three numbers produces three requests and three `AfterSend` events.
+
+### `twilio`
+
+```dotenv
+TWILIO_ACCOUNT_SID=ACxxxxxxxx
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_FROM=+15005550006
+```
+
+```php
+$result = swissecho()->route('sms', function ($ms) {
+    return $ms->to('+14155552671')->content('Your code is 1234');
+})->gateway('twilio')->go();
+
+$result->messageId;   // Twilio's SID, e.g. SMxxxxxxxx
+```
+
+`TWILIO_FROM` is this gateway's default sender, and it is resolved like every other gateway's: a sender set on the message or supplied by the notifiable wins over it, and it wins over `SWISSECHO_SENDER`. If you set `TWILIO_MESSAGING_SERVICE_SID`, the Messaging Service is used in place of the default — but a sender chosen for the message still wins.
+
+### `vonage`
+
+```dotenv
+VONAGE_API_KEY=your_api_key
+VONAGE_API_SECRET=your_api_secret
+VONAGE_FROM=MyApp
+```
+
+```php
+$result = swissecho()->route('sms', function ($ms) {
+    return $ms->to('+447911123456')->content('Your code is 1234');
+})->gateway('vonage')->go();
+```
+
+`VONAGE_FROM` is this gateway's default sender; a sender set on the message or supplied by the notifiable wins over it.
+
+Vonage answers HTTP 200 whether or not it accepted the message, so `$result->success` is read from the status inside its reply, and `$result->errorCode` is Vonage's own status code.
+
+---
+
+## TNZ
+
+The `tnz` gateway on the `sms` route uses TNZ's **REST API v3.00**. Set the auth token from your TNZ dashboard:
+
+```dotenv
+TNZ_AUTH_TOKEN=your_auth_token
+```
+
+It is sent as `Authorization: Bearer {token}` to `https://api.tnz.co.nz/api/v3.00/sms`, with every recipient in one request.
+
+TNZ's sender field takes a phone number only. A sender that is a phone number is sent as `FromNumber`; a sender that is a name is left out, and TNZ applies your account's own.
+
+> **Changed in 1.3.0.** This gateway used to call the v2 API with Basic authentication. `TNZ_API_KEY` is still read, but its value must now be a v3 auth token, and a `TNZ_URL` that points at a v2 address must be removed or updated.
+
+---
+
+## WhatsApp Gateways
+
+One gateway serves the `whatsapp` route: `directwhatsapp`, Meta's WhatsApp Cloud API. It is the route's default, so a WhatsApp send needs no `->gateway()` call.
+
+It sends **one request per recipient**, because the Cloud API takes a single recipient. A send to three numbers produces three requests and three `AfterSend` events, each naming the number it went to.
+
+> **Removed in 1.3.0.** The `kudisms` gateway is gone: KudiSMS changed its WhatsApp API and the gateway no longer matched it. If you set `SWISSECHO_WHATSAPP_GATEWAY=kudisms`, remove it or set it to `directwhatsapp`; the `KUDISMS_*` variables are no longer read. To keep using KudiSMS, register your own gateway class under `whatsapp.gateway_options`.
+
+> **Note.** Set `SWISSECHO_WHATSAPP_GATEWAY`, not `SWISSECHO_ROUTE_GATEWAY`. The latter is kept working only as a fallback for this route, and naming an SMS gateway such as `termii` in either raises a clear `SwissechoException` rather than failing on an undefined key.
 
 ### `directwhatsapp` — the WhatsApp Cloud API
 
@@ -337,7 +466,7 @@ WHATSAPP_ACCESS_TOKEN=EAAG...
 ```php
 swissecho()->route('whatsapp', function ($ms) {
     return $ms->to('2348012345678')->content('Your order has shipped');
-})->gateway('directwhatsapp')->go();
+})->go();
 ```
 
 That posts to the documented endpoint:
@@ -367,18 +496,6 @@ WHATSAPP_TEMPLATE_LANGUAGE=en_US
 ],
 ```
 
-### `kudisms`
-
-A reseller. It requires the template code registered on your Kudisms account:
-
-```dotenv
-KUDISMS_API_KEY=your_api_key
-KUDISMS_URL=your_url
-KUDISMS_TEMPLATE_CODE=your_template_code
-```
-
-> **Changed in this release.** `KUDISMS_TEMPLATE_CODE` is new and required — the template code used to be hardcoded to a placeholder value, so every Kudisms WhatsApp send was rejected by the provider. Sends will throw until you set it.
-
 ---
 
 ## Transport, TLS and Timeouts
@@ -400,7 +517,7 @@ If one provider has a genuinely broken certificate, turn it off while you chase 
 
 A `timeout` of `0` means cURL waits forever, so a hung provider holds a PHP worker open for as long as the socket stays up — sends run inline in the request unless the notification is queued.
 
-Two exceptions: Slack and Telegram substitute 30 and 10 seconds when the configured value is `0`, so they never wait forever. And the Termii voice gateway sets its own 30-second timeout, which a `0` here deliberately leaves in place.
+One exception: Slack and Telegram substitute 30 and 10 seconds when the configured value is `0`, so they never wait forever.
 
 ---
 
@@ -426,6 +543,8 @@ app('swissecho')
 ```
 
 For Laravel facade calls, import `Tekkenking\Swissecho\Facades\Swissecho`.
+
+Each of the three hands you a **fresh instance**. Build a send on it and call `go()`; nothing carries over to the next call.
 
 ---
 
@@ -517,7 +636,7 @@ swissecho()->message('Server restarted 🔄')
 swissecho()->route('voice', function ($ms) {
     return $ms->to('2348012345678')
               ->content('Your OTP is 5 6 7 8');
-})->gateway('termii')->go();
+})->go();
 ```
 
 ---
@@ -643,22 +762,209 @@ $user->notify(new OrderShipped());
 
 ---
 
-## SwissechoMessage API Reference
+## The Result
 
-The `SwissechoMessage` class is the message builder used in callbacks and notification methods:
+Every send returns a `SendResult`, in the same shape whichever provider handled it:
+
+```php
+$result = swissecho()->quick('2348012345678', 'Your OTP code is 1234');
+
+if ($result->success) {
+    // accepted by the provider
+    $messageId = $result->messageId;
+} else {
+    logger()->warning('SMS failed', [
+        'code'   => $result->errorCode,
+        'reason' => $result->errorMessage,
+    ]);
+}
+```
+
+| Property | Array key | Type | Meaning |
+|---|---|---|---|
+| `success` | `success` | `bool` | The provider accepted the message |
+| `messageId` | `message_id` | `string\|null` | The provider's own ID for it, when it returns one |
+| `errorCode` | `error_code` | `string\|null` | The provider's error code, on failure |
+| `errorMessage` | `error_message` | `string\|null` | The provider's reason, on failure |
+| `providerRes` | `provider_res` | `mixed` | The provider's reply, untouched. Null in mock mode, or when nothing came back |
+| `to` | `to` | `mixed` | The recipient or recipients |
+| `route` | `route` | `string\|null` | `sms`, `voice`, `whatsapp`, `slack` or `telegram` |
+| `gateway` | `gateway` | `string\|null` | The gateway that handled it |
+| `mocked` | `mocked` | `bool` | Mock mode stood in for the provider |
+| `results` | — | `SendResult[]` | One per request, when a send made several |
+
+It also reads as an array — `$result['success']`, `$result['provider_res']` — and has `failed()`, `toArray()` and JSON serialisation. It cannot be changed once made.
+
+**Accepted is not delivered.** `success` means the provider took the message. Whether it reached the handset is what the provider's delivery report says, which arrives through [Webhooks](#webhooks).
+
+### Sends that make several requests
+
+WhatsApp, voice, Twilio and Vonage take one recipient per request, so a send to three numbers makes three requests. The result you get back folds them together: `success` is true only if every request was accepted, the first failure supplies `errorCode` and `errorMessage`, and each request's own result is in `results`:
+
+```php
+foreach ($result->results as $one) {
+    echo $one->to, $one->success ? ' accepted' : ' rejected: '.$one->errorMessage;
+}
+```
+
+### Notifications
+
+A notification can go out on several routes, so `send()` returns one result per route, keyed by route. Laravel passes that on as the response on its own `NotificationSent` event:
+
+```php
+use Illuminate\Notifications\Events\NotificationSent;
+
+Event::listen(function (NotificationSent $event) {
+    if ($event->channel === 'swissecho') {
+        $sms = $event->response['sms'] ?? null;   // a SendResult
+    }
+});
+```
+
+### How each provider's reply is judged
+
+A provider signals a rejection in its own way, and several do it inside an HTTP 200. Each gateway reads its own provider's reply:
+
+| Gateway | Accepted when | Message ID from |
+|---|---|---|
+| `twilio` | HTTP 2xx | `sid` |
+| `vonage` | every `messages[].status` is `"0"` | `message-id` |
+| `termii` | HTTP 2xx | `message_id` |
+| `nigerianbulksms` | no `error` in the body | none returned |
+| `routemobile` | every item starts `1701` | third field |
+| `smsbroadcast` | lines start `OK:`, not `BAD:` or `ERROR:` | third field |
+| `directwhatsapp` | no `error` object | `messages[0].id` |
+| `tnz` | `Result` is not `Failed` or `Unauthorized` | `MessageID` |
+| `montnets` | `result` is `0` | `msgid` |
+| `textngxyz` | `status` is not `ERROR` | `reference` |
+| `wirepick` | HTTP status only | — |
+| Slack | `ok` is true, or a webhook's HTTP 2xx | `ts` |
+| Telegram | `ok` is true | `result.message_id` |
+
+A rule only applies when the marker it knows is in the reply. Anything else is judged by HTTP status, where a 4xx or 5xx is a failure.
+
+These rules come from each provider's documentation and are pinned by tests against the documented example replies. **They have not been checked against live accounts.** If a provider's reply ever disagrees with its documentation, `providerRes` holds exactly what came back.
+
+---
+
+## API Reference
+
+### `swissecho()` — building and sending
+
+`swissecho()`, the `Swissecho` facade and `app('swissecho')` each return a fresh sender.
+
+| Method | Returns | What it does |
+|---|---|---|
+| `route(?string $route = null, string\|callable\|null $message = null)` | `$this` | Chooses the channel: `sms`, `voice`, `whatsapp`, `slack` or `telegram`. Null uses `SWISSECHO_ROUTE`. The second argument is the message, as a string or as a callback that receives a `SwissechoMessage` and returns it. Throws if the route does not exist. |
+| `gateway(string $gateway)` | `$this` | Names the gateway for this send. Wins over the place's gateway and the route default. |
+| `message(string\|callable $message)` | `$this` | Sets the message, as `route()`'s second argument does. |
+| `to($recipient)` | `$this` | A fallback recipient, used only if the message callback set none. |
+| `sender($sender)` | `$this` | A fallback sender, used only if the message callback set none. |
+| `makeNotifiable($notifiable)` | `$this` | Gives a direct send an object to resolve the recipient, place and identifier from, as a notification has. |
+| `go()` | `SendResult\|null` | Sends. Null only for a custom gateway that reports no result. |
+| `quick($recipient, $message)` | `SendResult\|null` | Sends a message on the default route in one call. |
+| `send($notifiable, Notification $notification)` | `array` | What Laravel calls for a notification. Returns one `SendResult` per route, keyed by route. |
+
+The public properties `$to`, `$sender` and `$message` can be set directly in place of the methods of the same name.
+
+### `SwissechoMessage` — the message
+
+The builder a callback receives, and what a notification's `toSms()`, `toVoice()`, `toWhatsapp()`, `toSlack()` or `toTelegram()` returns. Every method returns the message.
 
 | Method | Description | Example |
 |---|---|---|
 | `->line($text)` | Appends a line of text to the message body. Multiple calls add new lines. | `->line('Hello')` |
 | `->content($text)` | Alias for `line()`. | `->content('Hello')` |
-| `->to($recipient)` | Sets the recipient(s). Accepts a string or comma-separated list. | `->to('234801..., 234809...')` |
-| `->sender($name)` | Sets the sender ID (max 10 characters). | `->sender('MyApp')` |
+| `->to($recipient)` | Sets the recipient(s). Accepts a string, a comma-separated list or an array. | `->to('234801..., 234809...')` |
+| `->sender($name)` | Sets the sender ID. Sent as given. | `->sender('MyApp')` |
 | `->from($name)` | Alias for `sender()`. | `->from('MyApp')` |
-| `->gateway($name)` | Overrides the gateway for this message. | `->gateway('termii')` |
-| `->place($code)` | Sets the country/place code (e.g., 'nga'). Overrides auto-detection. | `->place('nga')` |
-| `->phonecode($code)` | Manually sets the phone country code (e.g., '234'). | `->phonecode('234')` |
-| `->identifier($id)` | Attaches an identifier (e.g., user ID) to the message for tracking. | `->identifier($user->id)` |
-| `->route($name)` | Sets the route/channel on the message itself. | `->route('sms')` |
+| `->gateway($name)` | Names the gateway for this message. | `->gateway('termii')` |
+| `->place($code)` | Sets the place (e.g. `nga`), which chooses the gateway and dialling code. | `->place('nga')` |
+| `->phonecode($code)` | Sets the dialling code. Normally taken from the place. | `->phonecode('234')` |
+| `->identifier($id)` | Attaches your own reference, carried through to the `AfterSend` event. | `->identifier($order->id)` |
+| `->route($name)` | Sets the route on the message itself. | `->route('sms')` |
+| `->get()` | Returns the message as an array. | |
+
+### `SendResult` — the outcome
+
+See [The Result](#the-result).
+
+### Events
+
+| Event | Dispatched | Properties |
+|---|---|---|
+| `Tekkenking\Swissecho\Events\AfterSend` | After every request, mock sends included | `$result` (`SendResult`), `$formattedResponse` (`array`), `$insightPayload` (`array`), `$identifier` |
+| `Tekkenking\Swissecho\Events\WebhookReceived` | When a provider callback passes secret verification | `$route`, `$gateway`, `$payload`, `$headers` |
+
+Detail in [Events](#events) and [Webhooks](#webhooks).
+
+### What a notification defines
+
+| Method | Purpose |
+|---|---|
+| `toSms($notifiable)`, `toVoice($notifiable)`, `toWhatsapp($notifiable)`, `toSlack($notifiable)`, `toTelegram($notifiable)` | Return the `SwissechoMessage` for that route. Defining one opts the notification in to the route. |
+| `swissechoRoutes($notifiable)` | Optional. The routes to use, as an array. Without it every route with a `to…()` method is used. |
+
+### What a notifiable can define
+
+| Member | Used for |
+|---|---|
+| `phone` attribute | The recipient. Checked first. |
+| `routeNotificationPhone()` | The recipient, when there is no `phone` attribute. |
+| `routeNotificationPlace()` | The place for this recipient, e.g. `nga`. |
+| `routeNotificationSmsSender()`, `routeNotificationVoiceSender()`, `routeNotificationWhatsappSender()` | The sender ID for that route. WhatsApp falls back to the SMS one. |
+| `routeNotificationSlackChannel()` | The Slack channel. |
+| `routeNotificationTelegramChatId()` | The Telegram chat ID. |
+| `routeNotificationIdentifier()` | The identifier reported on the `AfterSend` event. Defaults to the class and primary key. |
+
+### Configuration keys
+
+`config/swissecho.php`, published with `php artisan vendor:publish --tag=swissecho-config`.
+
+| Key | Env variable | Meaning |
+|---|---|---|
+| `live` | `SWISSECHO_ENABLED` | True sends for real. False is mock mode. |
+| `sender` | `SWISSECHO_SENDER` | The sender ID when the message and gateway set none. |
+| `route` | `SWISSECHO_ROUTE` | The default route. |
+| `fake` | `SWISSECHO_FAKE` | Mock driver: `log` or `mail`. |
+| `fake_mail` | `SWISSECHO_FAKE_MAIL` | Where the `mail` mock driver sends. |
+| `redact_secrets` | `SWISSECHO_REDACT_SECRETS` | Mask credentials in the `AfterSend` payload. |
+| `transport.verify_tls` | `SWISSECHO_VERIFY_TLS` | Verify the provider's certificate. |
+| `transport.timeout` | `SWISSECHO_TIMEOUT` | Seconds to wait for a reply. |
+| `transport.connect_timeout` | `SWISSECHO_CONNECT_TIMEOUT` | Seconds to wait for the connection. |
+| `routes_options.{route}.gateway` | `SWISSECHO_SMS_GATEWAY`, `SWISSECHO_VOICE_GATEWAY`, `SWISSECHO_WHATSAPP_GATEWAY` | The route's default gateway. |
+| `routes_options.{route}.default_place` | `SWISSECHO_DEFAULT_PLACE` | The place when a send names none. |
+| `routes_options.{route}.places.{place}` | — | `phonecode` and, optionally, the `gateway` for that place. |
+| `routes_options.{route}.gateway_options.{gateway}` | per gateway, see [Environment Variables](#environment-variables) | That gateway's settings. |
+
+Keys any gateway block understands, besides its own credentials:
+
+| Key | Meaning |
+|---|---|
+| `class` | The gateway class. |
+| `sender` | The sender ID for this gateway. |
+| `requires_sender` | Refuse to send when no sender is set anywhere. |
+| `sender_max_length` | Refuse a sender longer than this. |
+| `webhook` | `secret`, and optionally `class` and `handle`, for provider callbacks. |
+
+### Writing a gateway
+
+See [Adding a Custom SMS Gateway](#-adding-a-custom-sms-gateway). A gateway extends `BaseGateway` and provides:
+
+| Method | Required | Purpose |
+|---|---|---|
+| `init(): mixed` | yes | Build the request payload. |
+| `send($data)` | yes | Return a configured cURL handle. Swissecho executes it, applying TLS verification and timeouts. |
+| `interpretResponse(mixed $body, int $httpCode): array` | no | Decide whether the provider accepted the message. Return `success`, and any of `message_id`, `error_code`, `error_message`. The default goes by HTTP status. |
+| `checkDependencies(): array` | no | Classes the gateway needs, each as `[class, composer package]`. |
+
+Add `use \Tekkenking\Swissecho\SendsPerRecipient;` to a gateway whose provider takes one recipient per request; `$this->currentRecipient` is then the recipient of the request being built.
+
+### Exceptions
+
+Everything the package throws is a `Tekkenking\Swissecho\SwissechoException`, with a message saying what to set. It is thrown before any request is made when: the route or gateway does not exist; no place can be determined, or the place is not configured or has no `phonecode`; there is no recipient or no message body; a gateway that requires a sender has none, or the sender is over the gateway's limit; a gateway's credentials are missing; or the mock driver is not `log` or `mail`.
+
+A provider rejecting the message is not an exception. It is a `SendResult` whose `success` is false.
 
 ---
 
@@ -705,24 +1011,33 @@ Tekkenking\Swissecho\Events\AfterSend
 
 | Property | Type | Description |
 |---|---|---|
+| `$result` | `SendResult` | The outcome, as [The Result](#the-result) describes. The one to build on. |
 | `$insightPayload` | `array` | Contains `request` (the payload sent to the gateway) and `response` (raw gateway response) |
-| `$formattedResponse` | `array` | Structured response with `status`, `partner_response`, `from`, `to`, `body`, `route`, `gateway`, `identifier`, `timestamp` |
+| `$formattedResponse` | `array` | `success`, `message_id`, `error_code`, `error_message`, `provider_res` and `mocked`, alongside `from`, `to`, `body`, `route`, `gateway`, `identifier`, `timestamp`, and the older `status` and `partner_response` |
 | `$identifier` | `string|null` | A short reference to the notifiable, e.g. `App\Models\User:42` |
 
-#### What `status` means
+#### Reading the outcome
 
-`$formattedResponse['status']` is `false` when the request failed **or** when the provider rejected the message with a 4xx or 5xx. A rejection carries the detail:
+`$event->result->success`, or `$formattedResponse['success']`, is true when the provider accepted the message. It is read from the provider's own reply, so a rejection reported inside an HTTP 200 counts as a failure:
 
 ```php
-[
-    'error'     => true,
-    'message'   => 'Gateway rejected the message with HTTP 401',
-    'http_code' => 401,
-    'response'  => ['message' => 'Invalid API key'],
-]
+public function handle(AfterSend $event): void
+{
+    if ($event->result->failed()) {
+        logger()->warning('Send failed', [
+            'gateway' => $event->result->gateway,
+            'code'    => $event->result->errorCode,
+            'reason'  => $event->result->errorMessage,
+        ]);
+    }
+}
 ```
 
-A `status` of `true` means the provider accepted it. It is not a delivery receipt — for that you want the provider's own callback, which is what [Webhooks](#webhooks) is for.
+`provider_res` is the provider's reply exactly as it arrived.
+
+`status` and `partner_response` are still there for listeners written before 1.3.0. `status` now agrees with `success`. `partner_response` is the reply on success and, on failure, an array of `error`, `message`, `http_code` and `response`.
+
+A `success` of true means the provider accepted the message. It is not a delivery receipt — for that you want the provider's own callback, which is what [Webhooks](#webhooks) is for.
 
 #### Credentials are masked
 
@@ -877,8 +1192,8 @@ Swissecho provides global helper functions for phone number manipulation:
 
 | Function | Description |
 |---|---|
-| `swissecho()` | Returns the Swissecho singleton instance |
-| `addCountryCodeToPhoneNumber($phone, $code)` | Prepends a country code (e.g., '234') to a phone number, stripping leading `0` or `+` |
+| `swissecho()` | Returns a fresh Swissecho sender |
+| `addCountryCodeToPhoneNumber($phone, $code)` | Puts a number into digits-only international form for the given dialling code. A number written with `+` is kept as given. |
 | `removeCountryCodeFromPhoneNumber($phone, $code)` | Strips a country code prefix from a phone number |
 | `convertPhoneNumberToArray($phone)` | Splits a comma-separated phone string into an array |
 
@@ -1049,6 +1364,56 @@ You can also map it to a country in `places` for automatic geo-routing:
 | `$this->config` | `array` | Your gateway's full config block from `swissecho.php` |
 | `init(): mixed` | abstract method | Build the request payload; return value is passed to `send()` |
 | `send($data): \CurlHandle|bool` | abstract method | Set up and return a cURL handle; Swissecho executes it |
+| `interpretResponse(mixed $body, int $httpCode): array` | optional override | Decide whether the provider accepted the message. Defaults to the HTTP status. |
+| `$this->decodeJson($body)` | helper | The reply as an array, or null if it is not JSON |
+
+### Telling Swissecho what your provider's reply means
+
+By default a gateway's send counts as accepted unless the HTTP status is 4xx or 5xx. If your provider reports a rejection inside an HTTP 200, or returns a message ID worth keeping, override `interpretResponse()`:
+
+```php
+protected function interpretResponse(mixed $body, int $httpCode): array
+{
+    $data = $this->decodeJson($body);
+
+    if ($data === null) {
+        return parent::interpretResponse($body, $httpCode);   // not JSON: go by HTTP status
+    }
+
+    if (($data['status'] ?? null) !== 'sent') {
+        return [
+            'success'       => false,
+            'error_code'    => $data['code'] ?? null,
+            'error_message' => $data['reason'] ?? 'Rejected',
+        ];
+    }
+
+    return ['success' => true, 'message_id' => $data['id'] ?? null];
+}
+```
+
+That is what fills in the `SendResult` your callers get back from `go()`.
+
+---
+
+## Provider Test Status
+
+Every gateway is covered by automated tests and built from its provider's published documentation, but **none has been confirmed with a real message on a real account**. Send one test message through a gateway before relying on it, and please report what you find.
+
+| Gateway | Route | What is unconfirmed |
+|---|---|---|
+| `twilio` | sms | New in 1.3.0. The request and the reading of the reply. |
+| `vonage` | sms | New in 1.3.0. The request and the reading of the reply. |
+| `tnz` | sms | Rewritten for REST API v3.00 in 1.3.0. The request and the reading of the reply. |
+| `directwhatsapp` | whatsapp | The request, the template send and the reading of the reply. |
+| `termii` | sms | The reading of the reply, which is new in 1.3.0. |
+| `nigerianbulksms` | sms | The reading of the reply, which is new in 1.3.0. |
+| `routemobile` | sms | The reading of the reply, which is new in 1.3.0. |
+| `smsbroadcast` | sms | The reading of the reply, which is new in 1.3.0. |
+| `montnets` | sms | The reading of the reply, which is new in 1.3.0. |
+| `textngxyz` | voice | The reading of the reply, which is new in 1.3.0. |
+| `wirepick` | sms | Its reply format is not documented, so success is judged by HTTP status alone. |
+| Slack and Telegram | slack, telegram | The message identifier and error fields in the result. |
 
 ---
 

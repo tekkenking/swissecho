@@ -7,8 +7,6 @@ use Throwable;
 
 class SwissechoException extends Exception
 {
-    private $errorMsg;
-
     /**
      * @param string $message
      * @param int $code
@@ -16,7 +14,6 @@ class SwissechoException extends Exception
      */
     public function __construct($message = "", $code = 0, ?Throwable $previous = null)
     {
-        $this->errorMsg = $message;
         parent::__construct($message, $code, $previous);
     }
 
@@ -46,7 +43,7 @@ class SwissechoException extends Exception
      *
      * @param string $route
      * @param array $availablePlaces
-     * @return static
+     * @return self
      */
     public static function noPlaceConfigured(string $route, array $availablePlaces): self
     {

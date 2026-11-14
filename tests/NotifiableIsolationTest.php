@@ -27,9 +27,14 @@ class NotifiableIsolationTest extends TestCase
         $app['config']->set('swissecho.live', false);
         $app['config']->set('swissecho.fake', 'log');
         $app['config']->set('app.env', 'local');
+
+        //A default sender, as any real install has. Gateways that need one
+        //refuse to send without it.
+        $app['config']->set('swissecho.sender', 'MyApp');
         $app['config']->set('swissecho.routes_options.sms.default_place', 'nga');
-        $app['config']->set('swissecho.routes_options.whatsapp.gateway_options.kudisms.template_code', 'test_template');
-        $app['config']->set('swissecho.routes_options.whatsapp.places.nga', ['phonecode' => '+234', 'gateway' => 'kudisms']);
+        $app['config']->set('swissecho.routes_options.whatsapp.gateway_options.directwhatsapp.phone_number_id', '123456789');
+        $app['config']->set('swissecho.routes_options.whatsapp.gateway_options.directwhatsapp.auth.access_token', 'test-token');
+        $app['config']->set('swissecho.routes_options.whatsapp.places.nga', ['phonecode' => '+234', 'gateway' => 'directwhatsapp']);
         //SWISSECHO_DEFAULT_PLACE feeds every route's default_place in the
         //real config; set both here since we are going through config().
         $app['config']->set('swissecho.routes_options.whatsapp.default_place', 'nga');

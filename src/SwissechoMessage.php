@@ -2,7 +2,6 @@
 
 namespace Tekkenking\Swissecho;
 
-use Illuminate\Support\Str;
 
 class SwissechoMessage
 {
@@ -52,7 +51,12 @@ class SwissechoMessage
 
         if($sender) {
             if(!isset($this->data['sender'])){
-                $this->data['sender'] = Str::limit($sender, 10, '');
+                //Sent as given. This used to be cut to 10 characters, which
+                //is one short of the 11 GSM allows, mangled a phone-number
+                //sender such as +15005550006, and applied to WhatsApp and
+                //voice, where the SMS rule does not exist. A gateway that
+                //needs a limit sets sender_max_length in its config.
+                $this->data['sender'] = (string) $sender;
             }
             $this->sender = $this->from = $this->data['sender'];
         }

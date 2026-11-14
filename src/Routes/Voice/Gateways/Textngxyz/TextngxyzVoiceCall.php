@@ -33,4 +33,24 @@ class TextngxyzVoiceCall extends BaseGateway
         return $curl;
     }
 
+    /**
+     * Textng answers {"status":"ERROR","comment":"..."} for a rejection and
+     * a status of "Successful" with a `reference` otherwise. Used only when
+     * a status field is present.
+     * https://textngcommunications.com/api/v1/voice-otp/
+     */
+    protected function interpretResponse(mixed $body, int $httpCode): array
+    {
+        $data = $this->decodeJson($body);
+
+        if($data === null || !is_string($data['status'] ?? null)) {
+            return parent::interpretResponse($body, $httpCode);
+        }
+
+        if(strtoupper($data['status']) === 'ERROR') {
+            return ['success' => false, 'error_message' => (string) ($data['comment'] ?? 'Textng rejected the call')];
+        }
+
+        return parent::interpretResponse($body, $httpCode) + ['message_id' => $data['reference'] ?? null];
+    }
 }
