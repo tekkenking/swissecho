@@ -9,6 +9,12 @@
 
 **Swissecho** is a Laravel package that provides a unified, fluent API for sending messages across **multiple channels** and **multiple gateway providers**. Instead of writing separate integration code for each provider, you configure them all in one place and switch between them with a single method call.
 
+```dotenv
+# Required once: every send needs a place, which chooses the gateway
+# and the dialling code. See "Geo-Routing" below.
+SWISSECHO_DEFAULT_PLACE=nga
+```
+
 ```php
 // One line — send an SMS through your default gateway
 swissecho()->quick('2348012345678', 'Your OTP code is 1234');
@@ -19,6 +25,10 @@ swissecho()->route('sms', function ($ms) {
               ->content('Your order has been shipped!');
 })->gateway('termii')->sender('MyApp')->go();
 ```
+
+> Without a place configured, every send above raises a `SwissechoException`
+> telling you the three ways to set one. Set `SWISSECHO_DEFAULT_PLACE`, or add
+> `->place('nga')` to each send.
 
 Switch `'sms'` to `'whatsapp'`, `'voice'`, `'slack'` or `'telegram'` and the rest of your code stays the same. In development, leave `SWISSECHO_ENABLED=false` and nothing reaches a live API — messages go to your log file or an inbox instead.
 
@@ -70,6 +80,7 @@ Switch `'sms'` to `'whatsapp'`, `'voice'`, `'slack'` or `'telegram'` and the res
 |---|---|
 | **PHP** | ^8.1 |
 | **Laravel** | 11.x, 12.x, 13.x |
+| **PHP extension** | `ext-curl` |
 
 ---
 
@@ -99,7 +110,7 @@ SWISSECHO_ROUTE=sms            # Default route/channel: sms, voice, whatsapp, sl
 SWISSECHO_SMS_GATEWAY=termii        # Default gateway for the sms route
 SWISSECHO_VOICE_GATEWAY=termii      # Default gateway for the voice route
 SWISSECHO_WHATSAPP_GATEWAY=kudisms  # Default gateway for the whatsapp route
-SWISSECHO_DEFAULT_PLACE=       # Optional: default place/country code (e.g. nga) used when a notifiable doesn't specify one
+SWISSECHO_DEFAULT_PLACE=nga    # Required unless every send sets ->place() or the notifiable has routeNotificationPlace()
 
 # ── Transport ──────────────────────────────────────────────
 SWISSECHO_VERIFY_TLS=true      # Verify the provider's TLS certificate. Keep this on.
@@ -387,7 +398,9 @@ Every gateway request goes out with the same transport settings, applied central
 
 If one provider has a genuinely broken certificate, turn it off while you chase them — but understand that it applies to every gateway, not just that one.
 
-A `timeout` of `0` means cURL waits forever. Sends run inline in the request unless the notification is queued, so a hung provider with no timeout holds a PHP worker open for as long as the socket stays up.
+A `timeout` of `0` means cURL waits forever, so a hung provider holds a PHP worker open for as long as the socket stays up — sends run inline in the request unless the notification is queued.
+
+Two exceptions: Slack and Telegram substitute 30 and 10 seconds when the configured value is `0`, so they never wait forever. And the Termii voice gateway sets its own 30-second timeout, which a `0` here deliberately leaves in place.
 
 ---
 
@@ -442,7 +455,7 @@ swissecho()->route('sms', function ($ms) {
               // ->gateway('routemobile')   // override gateway inside callback
               // ->sender('MyBrand')        // override sender inside callback
 })
-->to('2348011111111')       // optional: additional/fallback recipient
+->to('2348011111111')       // fallback only: ignored if the callback set ->to()
 ->sender('MyApp')           // optional: override sender
 ->gateway('termii')         // optional: override gateway
 ->go();                     // 🚀 sends the message
@@ -535,7 +548,8 @@ class OrderShipped extends Notification
 
     /**
      * (Optional) Tell Swissecho which routes to use.
-     * If omitted, defaults to ['sms', 'slack', 'whatsapp', 'telegram'].
+     * If omitted, defaults to ['sms', 'slack', 'whatsapp', 'telegram', 'voice'] -
+     * so a toVoice() method also places a voice call unless you narrow this.
      */
     public function swissechoRoutes($notifiable): array
     {
@@ -568,14 +582,30 @@ class User extends Authenticatable
     /**
      * Option A: Have a `phone` attribute on the model (e.g. column in DB).
      * Swissecho checks $notifiable->phone automatically.
+     *
+     * This one WINS. If the model has a phone attribute, Option B is never
+     * called, so do not define both and expect the method to decide.
      */
 
     /**
-     * Option B: Define this method for custom logic.
+     * Option B: Define this method for custom logic, when there is no
+     * phone attribute on the model.
      */
     public function routeNotificationPhone(): string
     {
         return $this->mobile_number;
+    }
+
+    /**
+     * (Optional) Override the sender ID per user. Checked before the
+     * gateway's configured sender. There is one per route:
+     * routeNotificationSmsSender(), routeNotificationVoiceSender() and
+     * routeNotificationWhatsappSender() - the WhatsApp one falls back to
+     * the SMS one when it is absent.
+     */
+    public function routeNotificationSmsSender(): string
+    {
+        return $this->brand_sender_id;
     }
 
     /**
@@ -828,6 +858,10 @@ Name one in the webhook block and it is called in place of the event:
     'handle' => 'handle',   // the method to call, passed the Request
 ],
 ```
+
+### Which Slack credential wins
+
+If both `SLACK_WEBHOOK_URL` and `SLACK_BOT_TOKEN` are set, **the webhook wins**, and a webhook posts only to the channel it was created for. So `->to('#alerts')` is accepted and then ignored, and the message lands in the webhook's own channel. Configure the bot token alone if you need to choose the channel per message.
 
 ### Security note
 
