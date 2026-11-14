@@ -101,6 +101,11 @@ class TelegramRoute extends BaseRoute
             throw new SwissechoException('Telegram: message body is required');
         }
 
+        //Built before the mock branch, so a mocked send carries the same
+        //insightPayload['request'] a live one would. It used to stay [] for
+        //this route, leaving anything auditing mock sends with nothing.
+        $this->requestPayload = $this->buildPayload($chatId, $message);
+
         //Mock before the token check, as SlackRoute does. Requiring a bot
         //token in order to produce a mock log meant local development
         //without one threw, while the same setup mocked fine on Slack.
@@ -109,7 +114,7 @@ class TelegramRoute extends BaseRoute
             return;
         }
 
-        $this->dispatchAfterSendEvent($this->postMessage($chatId, $message));
+        $this->dispatchAfterSendEvent($this->postMessage());
     }
 
     /**
@@ -120,24 +125,35 @@ class TelegramRoute extends BaseRoute
      * @return array
      * @throws SwissechoException
      */
-    protected function postMessage($chatId, string $message): array
+    protected function buildPayload($chatId, string $message): array
+    {
+        $payload = [
+            'chat_id' => $chatId,
+            'text'    => $message,
+        ];
+
+        $parseMode = $this->config['routes_options']['telegram']['parse_mode'] ?? null;
+
+        if ($parseMode) {
+            $payload['parse_mode'] = $parseMode;
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Post the already-built payload to the Bot API.
+     *
+     * @return array
+     * @throws SwissechoException
+     */
+    protected function postMessage(): array
     {
         $routeConfig = $this->config['routes_options']['telegram'] ?? [];
         $token       = $routeConfig['auth']['token'] ?? null;
 
         if (!$token) {
             throw new SwissechoException('Telegram: configure TELEGRAM_BOT_TOKEN');
-        }
-
-        $this->requestPayload = [
-            'chat_id' => $chatId,
-            'text'    => $message,
-        ];
-
-        $parseMode = $routeConfig['parse_mode'] ?? null;
-
-        if ($parseMode) {
-            $this->requestPayload['parse_mode'] = $parseMode;
         }
 
         return $this->postJson(
