@@ -12,7 +12,7 @@ All notable changes to this package are recorded here. Versions follow [Semantic
 - `requires_sender` and `sender_max_length` on any gateway's config.
 - A notifiable whose sender method returns nothing now falls back to the gateway's sender and then `SWISSECHO_SENDER`. It used to leave the message with no sender at all.
 - Recipients are formatted by libphonenumber, which handles spaces, brackets and dashes in a number and countries whose rules differ, such as Italy keeping its leading 0.
-- CI on PHP 8.2 to 8.4 against Laravel 11 to 13, and PHPStan at level 5.
+- CI on PHP 8.2 to 8.4 against Laravel 12 and 13, and PHPStan at level 5.
 - A full API reference in the README.
 
 ### Changed
@@ -21,7 +21,8 @@ All notable changes to this package are recorded here. Versions follow [Semantic
 - **Senders are sent as given.** They used to be cut to 10 characters silently, one short of the 11 GSM allows, and that mangled phone-number senders. A sender over 10 characters that was being shortened now goes out whole.
 - **A gateway that needs a sender refuses to send without one.** `termii`, `routemobile` and `smsbroadcast` now stop with a clear error when no sender is set anywhere, where they used to send an empty one and be rejected.
 - **`status` on the `AfterSend` event can now be false for an HTTP 200.** It agrees with `success`, which is read from the provider's reply.
-- The minimum PHP version is stated as 8.2. It always was in practice: Laravel 11 requires it.
+- **Laravel 11 is no longer supported.** It is out of security support, and Composer now refuses to install any 11.x release because each carries unpatched advisories. Applications on Laravel 11 stay on 1.2.0, which Composer selects for them automatically.
+- The minimum PHP version is 8.2, which Laravel 12 requires.
 - Direct sends and notification sends now run through one preparation path, so a direct send given a notifiable gets an identifier as a notification does.
 
 ### Deprecated

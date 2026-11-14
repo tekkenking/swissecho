@@ -94,7 +94,7 @@ Switch `'sms'` to `'whatsapp'`, `'voice'`, `'slack'` or `'telegram'` and the res
 | Dependency | Supported Versions |
 |---|---|
 | **PHP** | ^8.2 |
-| **Laravel** | 11.x, 12.x, 13.x |
+| **Laravel** | 12.x, 13.x |
 | **PHP extension** | `ext-curl` |
 
 ---
