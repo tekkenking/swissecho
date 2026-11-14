@@ -49,7 +49,7 @@ Switch `'sms'` to `'whatsapp'`, `'voice'`, `'slack'` or `'telegram'` and the res
 |---|---|---|
 | **SMS** | Traditional text messages | Termii, RouteMobile, SmsBroadcast (AU), TNZ (NZ), NigerianBulkSMS, Montnets, Wirepick, Twilio, Vonage |
 | **Voice** | Voice OTP / voice calls | Termii, Textng.xyz |
-| **WhatsApp** | WhatsApp messaging | WhatsApp Cloud API (direct), KudiSMS |
+| **WhatsApp** | WhatsApp messaging | WhatsApp Cloud API (direct) |
 | **Slack** | Slack notifications | Incoming Webhook, Bot Token (`chat.postMessage`) |
 | **Telegram** | Telegram Bot messages | Telegram Bot API (`sendMessage`) |
 
@@ -124,7 +124,7 @@ SWISSECHO_FAKE_MAIL=           # Required when SWISSECHO_FAKE=mail. An address y
 SWISSECHO_ROUTE=sms            # Default route/channel: sms, voice, whatsapp, slack, telegram
 SWISSECHO_SMS_GATEWAY=termii        # Default gateway for the sms route
 SWISSECHO_VOICE_GATEWAY=termii      # Default gateway for the voice route
-SWISSECHO_WHATSAPP_GATEWAY=kudisms  # Default gateway for the whatsapp route
+SWISSECHO_WHATSAPP_GATEWAY=directwhatsapp  # Default gateway for the whatsapp route
 SWISSECHO_DEFAULT_PLACE=nga    # Required unless every send sets ->place() or the notifiable has routeNotificationPlace()
 
 # ── Transport ──────────────────────────────────────────────
@@ -186,11 +186,6 @@ VONAGE_URL=                         # Optional. Defaults to https://rest.nexmo.c
 # ── Textng.xyz (Voice) ────────────────────────────────────
 TEXTNGXYZ_API_KEY=your_api_key
 
-# ── KudiSMS (WhatsApp) ────────────────────────────────────
-KUDISMS_API_KEY=your_api_key
-KUDISMS_URL=your_url
-KUDISMS_TEMPLATE_CODE=         # Required. The template registered on your Kudisms account.
-
 # ── WhatsApp Cloud API (direct, no reseller) ──────────────
 WHATSAPP_PHONE_NUMBER_ID=      # From your WhatsApp app at developers.facebook.com
 WHATSAPP_ACCESS_TOKEN=         # A system user access token
@@ -243,7 +238,7 @@ Each route with more than one gateway has a default, set per route:
 ```dotenv
 SWISSECHO_SMS_GATEWAY=termii
 SWISSECHO_VOICE_GATEWAY=termii
-SWISSECHO_WHATSAPP_GATEWAY=kudisms
+SWISSECHO_WHATSAPP_GATEWAY=directwhatsapp
 ```
 
 That default is used when the resolved `place` names no gateway of its own. **A place's gateway always wins**, which is the whole point of geo-routing — see the next section. And naming a gateway on the send wins over both:
@@ -433,42 +428,13 @@ Vonage answers HTTP 200 whether or not it accepted the message, so `$result->suc
 
 ## WhatsApp Gateways
 
-Two gateways serve the `whatsapp` route, and **they need completely different credentials**:
+One gateway serves the `whatsapp` route: `directwhatsapp`, Meta's WhatsApp Cloud API. It is the route's default, so a WhatsApp send needs no `->gateway()` call.
 
-| Gateway | Needs | Default? |
-|---|---|---|
-| `kudisms` | `KUDISMS_API_KEY`, `KUDISMS_URL`, `KUDISMS_TEMPLATE_CODE` | yes |
-| `directwhatsapp` | `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN` | no |
+It sends **one request per recipient**, because the Cloud API takes a single recipient. A send to three numbers produces three requests and three `AfterSend` events, each naming the number it went to.
 
-`KUDISMS_TEMPLATE_CODE` applies to `kudisms` only. The Cloud API gateway has nothing to do with Kudisms and does not read it.
+> **Removed in 1.3.0.** The `kudisms` gateway is gone: KudiSMS changed its WhatsApp API and the gateway no longer matched it. If you set `SWISSECHO_WHATSAPP_GATEWAY=kudisms`, remove it or set it to `directwhatsapp`; the `KUDISMS_*` variables are no longer read. To keep using KudiSMS, register your own gateway class under `whatsapp.gateway_options`.
 
-### Choosing the Cloud API gateway
-
-Naming it on the send always works:
-
-```php
-swissecho()->route('whatsapp', fn ($ms) => $ms->to('2348012345678')->content('hi'))
-    ->gateway('directwhatsapp')
-    ->go();
-```
-
-To make it the default instead, **two settings matter, not one.** `SWISSECHO_WHATSAPP_GATEWAY` sets the route's default, but a `place` overrides it — and `nga` is mapped to `kudisms` out of the box:
-
-```php
-// config/swissecho.php
-'whatsapp' => [
-    'gateway' => env('SWISSECHO_WHATSAPP_GATEWAY', 'kudisms'),
-    'places'  => [
-        'nga' => ['phonecode' => '+234', 'gateway' => 'directwhatsapp'],  // change this too
-    ],
-],
-```
-
-Setting the variable alone leaves Nigerian numbers going through Kudisms. Alternatively drop the `gateway` key from the place and let the route default apply.
-
-> **Note.** Set `SWISSECHO_WHATSAPP_GATEWAY`, not `SWISSECHO_ROUTE_GATEWAY`. The latter is kept working only as a fallback for this route, and naming an SMS gateway such as `termii` in either now raises a clear `SwissechoException` rather than failing on an undefined key.
-
-Both send **one request per recipient**, because every WhatsApp API here takes a single recipient. A send to three numbers produces three requests and three `AfterSend` events, each naming the number it went to.
+> **Note.** Set `SWISSECHO_WHATSAPP_GATEWAY`, not `SWISSECHO_ROUTE_GATEWAY`. The latter is kept working only as a fallback for this route, and naming an SMS gateway such as `termii` in either raises a clear `SwissechoException` rather than failing on an undefined key.
 
 ### `directwhatsapp` — the WhatsApp Cloud API
 
@@ -482,7 +448,7 @@ WHATSAPP_ACCESS_TOKEN=EAAG...
 ```php
 swissecho()->route('whatsapp', function ($ms) {
     return $ms->to('2348012345678')->content('Your order has shipped');
-})->gateway('directwhatsapp')->go();
+})->go();
 ```
 
 That posts to the documented endpoint:
@@ -511,18 +477,6 @@ WHATSAPP_TEMPLATE_LANGUAGE=en_US
     'language' => env('WHATSAPP_TEMPLATE_LANGUAGE', 'en_US'),
 ],
 ```
-
-### `kudisms`
-
-A reseller. It requires the template code registered on your Kudisms account:
-
-```dotenv
-KUDISMS_API_KEY=your_api_key
-KUDISMS_URL=your_url
-KUDISMS_TEMPLATE_CODE=your_template_code
-```
-
-> **Changed in this release.** `KUDISMS_TEMPLATE_CODE` is new and required — the template code used to be hardcoded to a placeholder value, so every Kudisms WhatsApp send was rejected by the provider. Sends will throw until you set it.
 
 ---
 
@@ -862,7 +816,6 @@ A provider signals a rejection in its own way, and several do it inside an HTTP 
 | `routemobile` | every item starts `1701` | third field |
 | `smsbroadcast` | lines start `OK:`, not `BAD:` or `ERROR:` | third field |
 | `directwhatsapp` | no `error` object | `messages[0].id` |
-| `kudisms` | `error_code` is `"000"` | after the `\|` in `data` |
 | `tnz` | `Result` is not `Failed` or `Unauthorized` | `MessageID` |
 | `montnets` | `result` is `0` | `msgid` |
 | `textngxyz` | `status` is not `ERROR` | `reference` |

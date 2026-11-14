@@ -80,17 +80,18 @@ class DefaultGatewayTest extends TestCase
     public function test_the_whatsapp_route_uses_its_declared_gateway(): void
     {
         //directwhatsapp is listed first in gateway_options, so array_key_first()
-        //returns it; the block declares kudisms, which must win.
+        //returns it; the block declares another gateway, which must win.
         $swissecho = new Swissecho();
 
         config(['swissecho.routes_options.whatsapp.places.tst' => ['phonecode' => '1']]);
-        config(['swissecho.routes_options.whatsapp.gateway_options.kudisms.template_code' => 'test_template']);
+        config(['swissecho.routes_options.whatsapp.gateway_options.second' => ['phone_number_id' => '123456789', 'auth' => ['access_token' => 'test-token']] + config('swissecho.routes_options.whatsapp.gateway_options.directwhatsapp')]);
+        config(['swissecho.routes_options.whatsapp.gateway' => 'second']);
 
         $swissecho->route('whatsapp', function (SwissechoMessage $ms) {
             return $ms->to('8012345678')->sender('MyApp')->content('hello')->place('tst');
         })->go();
 
-        $this->assertSame('kudisms', $this->resolvedGateway($swissecho));
+        $this->assertSame('second', $this->resolvedGateway($swissecho));
     }
 
     public function test_an_unknown_gateway_names_the_alternatives(): void

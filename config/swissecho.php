@@ -12,7 +12,6 @@ use Tekkenking\Swissecho\Routes\Sms\Gateways\Wirepick\Wirepick;
 use Tekkenking\Swissecho\Routes\Voice\Gateways\Termii\TermiiVoiceCall;
 use Tekkenking\Swissecho\Routes\Voice\Gateways\Textngxyz\TextngxyzVoiceCall;
 use Tekkenking\Swissecho\Routes\Whatsapp\Gateways\DirectWhatsapp\DirectWhatsapp;
-use Tekkenking\Swissecho\Routes\Whatsapp\Gateways\Kudisms\KudismsWhatsapp;
 
 return [
 
@@ -226,7 +225,7 @@ return [
             //SWISSECHO_ROUTE_GATEWAY is kept as a fallback: it only ever
             //appeared in this block, so it is the one route it could have
             //been meant for.
-            'gateway'        => env('SWISSECHO_WHATSAPP_GATEWAY', env('SWISSECHO_ROUTE_GATEWAY', 'kudisms')),
+            'gateway'        => env('SWISSECHO_WHATSAPP_GATEWAY', env('SWISSECHO_ROUTE_GATEWAY', 'directwhatsapp')),
             'default_place'  => env('SWISSECHO_DEFAULT_PLACE', null),
 
             'gateway_options'  =>  [
@@ -260,27 +259,13 @@ return [
                         'name'      =>  env('WHATSAPP_TEMPLATE_NAME'),
                         'language'  =>  env('WHATSAPP_TEMPLATE_LANGUAGE', 'en_US')
                     ]
-                ],
-
-                'kudisms'    =>  [
-                    'class' =>  KudismsWhatsapp::class,
-                    //'sender' =>  env('KUDISMS_WHATSAPP_SENDER_ID'),
-                    'url'    =>  env('KUDISMS_URL'),
-
-                    //The template code registered on your Kudisms account.
-                    //There is no sensible default: Kudisms rejects a send
-                    //whose template it does not recognise.
-                    'template_code' =>  env('KUDISMS_TEMPLATE_CODE'),
-                    'auth'  =>  [
-                        'api_key'   =>  env('KUDISMS_API_KEY')
-                    ]
                 ]
             ],
 
             'places'    =>  [
+                //No gateway named: the route's default above applies.
                 'nga'   =>  [
-                    'phonecode' =>  '+234',
-                    'gateway'   =>  'kudisms'
+                    'phonecode' =>  '+234'
                 ]
             ]
 

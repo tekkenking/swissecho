@@ -25,7 +25,8 @@ class VoiceAndBodyValidationTest extends TestCase
         $app['config']->set('swissecho.routes_options.sms.default_place', 'nga');
         $app['config']->set('swissecho.routes_options.voice.default_place', 'nga');
         $app['config']->set('swissecho.routes_options.whatsapp.default_place', 'nga');
-        $app['config']->set('swissecho.routes_options.whatsapp.gateway_options.kudisms.template_code', 'test_template');
+        $app['config']->set('swissecho.routes_options.whatsapp.gateway_options.directwhatsapp.phone_number_id', '123456789');
+        $app['config']->set('swissecho.routes_options.whatsapp.gateway_options.directwhatsapp.auth.access_token', 'test-token');
     }
 
     private function captured(array &$into): void

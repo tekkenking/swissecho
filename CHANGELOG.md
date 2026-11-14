@@ -25,6 +25,10 @@ All notable changes to this package are recorded here. Versions follow [Semantic
 - The minimum PHP version is 8.2, which Laravel 12 requires.
 - Direct sends and notification sends now run through one preparation path, so a direct send given a notifiable gets an identifier as a notification does.
 
+### Removed
+
+- **The `kudisms` WhatsApp gateway.** KudiSMS changed its WhatsApp API and the gateway no longer matched it. `directwhatsapp` (the WhatsApp Cloud API) is now the `whatsapp` route's default, and the `nga` place no longer names a gateway. The `KUDISMS_*` variables are no longer read; an app with `SWISSECHO_WHATSAPP_GATEWAY=kudisms` must remove it or set `directwhatsapp`.
+
 ### Deprecated
 
 - `partner_response` and `status` in `formattedResponse`. They still work; use `provider_res` and `success`.

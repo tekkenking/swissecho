@@ -14,7 +14,6 @@ use Tekkenking\Swissecho\Routes\Sms\Gateways\Wirepick\Wirepick;
 use Tekkenking\Swissecho\Routes\Voice\Gateways\Termii\TermiiVoiceCall;
 use Tekkenking\Swissecho\Routes\Voice\Gateways\Textngxyz\TextngxyzVoiceCall;
 use Tekkenking\Swissecho\Routes\Whatsapp\Gateways\DirectWhatsapp\DirectWhatsapp;
-use Tekkenking\Swissecho\Routes\Whatsapp\Gateways\Kudisms\KudismsWhatsapp;
 use Tekkenking\Swissecho\SwissechoMessage;
 use Tekkenking\Swissecho\SwissechoServiceProvider;
 
@@ -68,8 +67,6 @@ class ProviderResponseRulesTest extends TestCase
             'montnets accepted' => [Montnets::class, '{"result":0,"msgid":7832079989982321833,"custid":"b3d0"}', 200, true, '7832079989982321833', null, null],
             'montnets rejected inside a 200' => [Montnets::class, '{"result":-100012,"msgid":0,"custid":""}', 200, false, null, '-100012', 'Montnets rejected the message with result -100012'],
 
-            'kudisms accepted' => [KudismsWhatsapp::class, '{"status":"success","error_code":"000","data":"234XXXXXXXX|42a455f3-8d4d-a775-4311-13790d5820c0","msg":"Message sent Successfully"}', 200, true, '42a455f3-8d4d-a775-4311-13790d5820c0', null, null],
-            'kudisms rejected inside a 200' => [KudismsWhatsapp::class, '{"status":"error","error_code":"109","msg":"Insufficient credit"}', 200, false, null, '109', 'Insufficient credit'],
 
             'textng accepted' => [TextngxyzVoiceCall::class, '{"status":"Successful","reference":"ref-123","route":"VOICE-OTP"}', 200, true, 'ref-123', null, null],
             'textng rejected inside a 200' => [TextngxyzVoiceCall::class, '{"status":"ERROR","comment":"Invalid key"}', 200, false, null, null, 'Invalid key'],

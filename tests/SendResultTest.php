@@ -34,8 +34,9 @@ class SendResultTest extends TestCase
             $app['config']->set("swissecho.routes_options.$route.default_place", 'nga');
         }
 
-        $app['config']->set('swissecho.routes_options.whatsapp.gateway_options.kudisms.template_code', 'test_template');
         $app['config']->set('swissecho.routes_options.slack.auth.webhook', 'https://hooks.slack.com/services/T/B/x');
+        $app['config']->set('swissecho.routes_options.whatsapp.gateway_options.directwhatsapp.phone_number_id', '123456789');
+        $app['config']->set('swissecho.routes_options.whatsapp.gateway_options.directwhatsapp.auth.access_token', 'test-token');
         $app['config']->set('swissecho.routes_options.sms.gateway_options.filebacked', [
             'class'      => FileBackedGateway::class,
             'reply_file' => $this->replyFile,
