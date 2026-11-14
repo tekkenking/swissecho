@@ -111,12 +111,19 @@ class SlackRoute extends BaseRoute
             $this->reportsRequestedRecipient = false;
         }
 
+        //Built before the mock branch, so a mocked send carries the same
+        //insightPayload['request'] a live one would. It used to stay [] for
+        //this route, leaving anything auditing mock sends with nothing.
+        $this->requestPayload = $credential['mode'] === 'webhook'
+            ? ['text' => $message]
+            : ['channel' => $credential['channel'], 'text' => $message];
+
         if (!($this->config['live'] ?? false)) {
             $this->handleHttpMock();
             return;
         }
 
-        $this->dispatchAfterSendEvent($this->postMessage($message, $credential));
+        $this->dispatchAfterSendEvent($this->postMessage($credential));
     }
 
     /**
@@ -126,23 +133,13 @@ class SlackRoute extends BaseRoute
      * @return array
      * @throws SwissechoException
      */
-    protected function postMessage(string $message, array $credential): array
+    protected function postMessage(array $credential): array
     {
         if ($credential['mode'] === 'webhook') {
-            //A webhook posts only to the channel it was created for, so no
-            //channel is sent. Reported as such rather than echoing a channel
-            //that was never used.
-            $this->requestPayload = ['text' => $message];
-
             return $this->postJson($credential['url'], $this->requestPayload, [
                 'Content-Type: application/json',
             ]);
         }
-
-        $this->requestPayload = [
-            'channel' => $credential['channel'],
-            'text'    => $message,
-        ];
 
         return $this->postJson($credential['url'], $this->requestPayload, [
             'Content-Type: application/json',

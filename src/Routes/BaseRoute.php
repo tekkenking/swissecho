@@ -247,9 +247,13 @@ abstract class BaseRoute
      * @param $routeBuilder
      * @return void
      */
-    public function bootByDirect($routeBuilder): void
+    public function bootByDirect($routeBuilder, $notifiable = null): void
     {
         $this->loadConfig();
+
+        //So a direct send can resolve the recipient from a notifiable given
+        //to makeNotifiable(), which only the notification path used to do.
+        $this->notifiable = $notifiable;
         if ($routeBuilder->gateway !== null) {
             $this->gateway($routeBuilder->gateway);
         }
@@ -346,6 +350,14 @@ abstract class BaseRoute
     protected function msgBuilderInitForDirectSend($routeBuilder): void
     {
         $this->msgBuilder = $routeBuilder;
+
+        //Same resolution the notification path uses: the message's own
+        //recipient wins, then the notifiable's phone attribute, then
+        //routeNotificationPhone(). Without this, makeNotifiable() had no
+        //effect on a direct send and the send failed with 'Invalid phone
+        //number' even though the notifiable could answer.
+        $this->msgBuilder->to($this->prepareTo());
+
         $this->setPlace();
         $this->setPlaceConfig();
         $this->setGatewayFromPlace();
@@ -405,7 +417,10 @@ abstract class BaseRoute
             }
 
             // THIS IS FROM THE CURRENT MODEL
-            if (method_exists($this->notifiable, 'routeNotificationPhone')) {
+            //$this->notifiable is checked first: method_exists(null, ...) is
+            //a TypeError in PHP 8, and a direct send may have no notifiable.
+            //setPlace() already guards its equivalent call this way.
+            if ($this->notifiable && method_exists($this->notifiable, 'routeNotificationPhone')) {
                 return $this->notifiable->routeNotificationPhone();
             }
         }

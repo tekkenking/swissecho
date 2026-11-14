@@ -242,7 +242,10 @@ class Swissecho
             ->gateway($this->gateway);
 
         if($this->isCallBack) {
-            return $prepped->bootByDirect($this->builderForDirectSend());
+            return $prepped->bootByDirect(
+                $this->builderForDirectSend(),
+                $this->directNotifiable ?? $this->notifiable
+            );
         }
 
         if(!isset($this->notification)) {

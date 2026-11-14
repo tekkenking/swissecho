@@ -144,7 +144,10 @@ trait HttpRoute
         $formattedResponse = [
             'status'           => $status,
             'partner_response' => $gatewayResponse,
-            'from'             => $this->msgBuilder->sender ?? null,
+            //Always null: neither Slack nor Telegram has a sender field in
+            //its payload, so ->from() is accepted and never sent. Reporting
+            //it made the event claim an identity that did not leave here.
+            'from'             => null,
             'to'               => $to,
             'body'             => $this->msgBuilder->message,
             'route'            => $this->msgBuilder->route,
