@@ -32,7 +32,9 @@ class SecretRedactionTest extends TestCase
 
     public function test_it_masks_an_api_key_in_an_array_payload(): void
     {
-        //The shape Termii, Kudisms and the voice gateways build.
+        //The array shape: Kudisms and the voice gateways. Termii SMS and
+        //Montnets build JSON instead - covered by JsonSecretRedactionTest,
+        //because this comment once claimed Termii and the JSON path leaked.
         $subject = $this->subject();
         $masked = $subject->mask([
             'api_key'      => 'TLliveSecretValue',

@@ -341,6 +341,18 @@ trait SwissechoGatewayTrait
             return $masked;
         }
 
+        //A JSON body is the third shape a gateway builds, and the one this
+        //method used to miss: Termii and Montnets return json_encode($data),
+        //which contains no '=' so looksLikeQueryString() rejected it and the
+        //api_key travelled in clear.
+        if(is_string($payload)) {
+            $decoded = json_decode($payload, true);
+
+            if(is_array($decoded)) {
+                return json_encode($this->redactSecrets($decoded));
+            }
+        }
+
         if(is_string($payload) && $this->looksLikeQueryString($payload)) {
             return preg_replace_callback(
                 '/(^|[?&])([^=&]+)=([^&]*)/',
