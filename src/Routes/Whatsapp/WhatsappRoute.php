@@ -12,12 +12,12 @@ class WhatsappRoute extends BaseRoute
 
 
     /**
-     * @return WhatsappRoute
+     * @return static
      * @throws SwissechoException
      */
     public function sendViaNotification(): static
     {
-        $this->msgBuilderInitForSendViaNotification($this->notification->toWhatsapp($this->notifiable));
+        $this->prepareAndSend($this->notification->toWhatsapp($this->notifiable));
         return $this;
     }
 
@@ -28,7 +28,7 @@ class WhatsappRoute extends BaseRoute
      */
     public function directSend($routeBuilder): static
     {
-        $this->msgBuilderInitForDirectSend($routeBuilder);
+        $this->prepareAndSend($routeBuilder);
         return $this;
     }
 
@@ -44,20 +44,12 @@ class WhatsappRoute extends BaseRoute
      */
     protected function prepareSender(): mixed
     {
-        if(!$this->msgBuilder->sender ) {
-
-            if ($this->notifiable
-                && method_exists($this->notifiable, 'routeNotificationWhatsappSender')) {
-                return $this->notifiable->routeNotificationWhatsappSender();
-            } elseif ($this->notifiable
-                && method_exists($this->notifiable, 'routeNotificationSmsSender')) {
-                return $this->notifiable->routeNotificationSmsSender();
-            }
-
-            return $this->gatewaySender();
+        if($this->msgBuilder->sender) {
+            return $this->msgBuilder->sender;
         }
 
-        return $this->msgBuilder->sender;
+        return $this->senderFromNotifiable(['routeNotificationWhatsappSender', 'routeNotificationSmsSender'])
+            ?: $this->gatewaySender();
     }
 
 }

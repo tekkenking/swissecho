@@ -36,8 +36,29 @@ class Nigerianbulksms extends BaseGateway
         $ch = curl_init();
         curl_setopt($ch,CURLOPT_URL, $data);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HEADER, 0);
+        curl_setopt($ch, CURLOPT_HEADER, false);
 
         return $ch;
+    }
+
+    /**
+     * NigeriaBulkSMS reports a rejection inside the body, as
+     * {"error":"Login denied.","errno":"103"}, and a success as
+     * {"status":"OK","count":1,"price":8}. It returns no message ID.
+     * https://nigeriabulksms.com/sms-gateway-api-in-nigeria/
+     */
+    protected function interpretResponse(mixed $body, int $httpCode): array
+    {
+        $data = $this->decodeJson($body);
+
+        if($data !== null && isset($data['error'])) {
+            return [
+                'success'       => false,
+                'error_code'    => isset($data['errno']) ? (string) $data['errno'] : null,
+                'error_message' => (string) $data['error'],
+            ];
+        }
+
+        return parent::interpretResponse($body, $httpCode);
     }
 }

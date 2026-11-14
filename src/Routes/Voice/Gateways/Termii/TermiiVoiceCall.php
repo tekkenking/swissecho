@@ -42,4 +42,26 @@ class TermiiVoiceCall extends BaseGateway
         return $curl;
     }
 
+    /**
+     * Same convention as Termii SMS: HTTP status for failures, and a
+     * message_id (also returned as pinId) on success.
+     * https://developers.termii.com/voice-call
+     */
+    protected function interpretResponse(mixed $body, int $httpCode): array
+    {
+        $verdict = parent::interpretResponse($body, $httpCode);
+        $data = $this->decodeJson($body);
+
+        if($data === null) {
+            return $verdict;
+        }
+
+        if(!$verdict['success']) {
+            $verdict['error_message'] = is_string($data['message'] ?? null) ? $data['message'] : $verdict['error_message'];
+
+            return $verdict;
+        }
+
+        return ['success' => true, 'message_id' => $data['message_id'] ?? $data['pinId'] ?? null];
+    }
 }

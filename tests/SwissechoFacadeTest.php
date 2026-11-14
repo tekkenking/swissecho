@@ -21,17 +21,22 @@ class SwissechoFacadeTest extends TestCase
         ];
     }
 
-    public function test_facade_resolves_to_swissecho_singleton(): void
+    public function test_facade_resolves_to_a_swissecho_instance(): void
     {
         $this->assertInstanceOf(
             \Tekkenking\Swissecho\Swissecho::class,
             Swissecho::getFacadeRoot()
         );
+    }
 
-        $this->assertSame(
-            $this->app->make('swissecho'),
-            Swissecho::getFacadeRoot()
-        );
+    public function test_every_resolve_is_a_fresh_instance(): void
+    {
+        //Swissecho gathers a send as state on the object, so a shared
+        //instance carried one send's route, gateway and recipient into the
+        //next. Each entry point must hand out its own.
+        $this->assertNotSame($this->app->make('swissecho'), $this->app->make('swissecho'));
+        $this->assertNotSame(swissecho(), swissecho());
+        $this->assertNotSame(Swissecho::getFacadeRoot(), Swissecho::getFacadeRoot());
     }
 
     public function test_deprecated_swissecho_facade_alias_still_resolves(): void

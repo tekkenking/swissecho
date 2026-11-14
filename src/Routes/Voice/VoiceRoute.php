@@ -14,7 +14,7 @@ class VoiceRoute extends BaseRoute
      */
     public function sendViaNotification(): static
     {
-        $this->msgBuilderInitForSendViaNotification($this->notification->toVoice($this->notifiable));
+        $this->prepareAndSend($this->notification->toVoice($this->notifiable));
         return $this;
     }
 
@@ -25,7 +25,7 @@ class VoiceRoute extends BaseRoute
      */
     public function directSend($routeBuilder): static
     {
-        $this->msgBuilderInitForDirectSend($routeBuilder);
+        $this->prepareAndSend($routeBuilder);
         return $this;
     }
 
@@ -36,17 +36,11 @@ class VoiceRoute extends BaseRoute
      */
     protected function prepareSender(): mixed
     {
-        if (!$this->msgBuilder->sender) {
-
-            if ($this->notifiable
-                && method_exists($this->notifiable, 'routeNotificationVoiceSender')) {
-                return $this->notifiable->routeNotificationVoiceSender();
-            }
-
-            return $this->gatewaySender();
+        if($this->msgBuilder->sender) {
+            return $this->msgBuilder->sender;
         }
 
-        return $this->msgBuilder->sender;
+        return $this->senderFromNotifiable(['routeNotificationVoiceSender']) ?: $this->gatewaySender();
     }
 
 }

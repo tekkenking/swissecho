@@ -41,6 +41,8 @@ trait SendsPerRecipient
             throw new SwissechoException('Notification: no recipient to send to.');
         }
 
+        $results = [];
+
         foreach ($recipients as $recipient) {
             $this->currentRecipient = $recipient;
 
@@ -51,7 +53,13 @@ trait SendsPerRecipient
             $this->requestPayload = $this->init();
             $ch = $this->send($this->requestPayload);
             $this->execCurl($ch ?? null);
+
+            $results[] = $this->result;
         }
+
+        //One result for the caller: it succeeds only if every request did,
+        //and each request's own result is kept inside it.
+        $this->result = SendResult::combine(array_filter($results));
 
         return $this;
     }

@@ -12,7 +12,7 @@ class Swissecho
 {
 
     /**
-     * @var
+     * @var mixed
      */
     private $notifiable;
 
@@ -49,12 +49,16 @@ class Swissecho
 
 
     /**
+     * Send a notification on every route it supports.
+     *
      * @param $notifiable
      * @param Notification $notification
-     * @return void
+     * @return array<string, SendResult|null> One result per route, keyed by route.
+     *                                        Laravel passes this on as the
+     *                                        NotificationSent event's response.
      * @throws SwissechoException
      */
-    public function send($notifiable, Notification $notification): void
+    public function send($notifiable, Notification $notification): array
     {
         $this->notifiable = $notifiable;
         $this->notification = $notification;
@@ -67,7 +71,7 @@ class Swissecho
             : self::DEFAULT_VIAS;
         
         try {
-            $this->makeRoutes();
+            return $this->makeRoutes();
         } finally {
             //Cleared here rather than in go(): makeRoutes() reads
             //$this->notification once per via, so go() must not take it away
@@ -79,11 +83,13 @@ class Swissecho
     }
 
     /**
-     * @return void
+     * @return array<string, SendResult|null> One result per route sent on, keyed by route.
      * @throws SwissechoException
      */
-    protected function makeRoutes(): void
+    protected function makeRoutes(): array
     {
+        $results = [];
+
         foreach ($this->vias as $method) {
 
             //Uppercase first letter
@@ -94,9 +100,11 @@ class Swissecho
 
             //Check if viaMethod exists in the notification class
             if(method_exists($this->notification, $viaMethod)) {
-                $this->route($route)->go();
+                $results[strtolower($method)] = $this->route($route)->go();
             }
         }
+
+        return $results;
     }
 
     /**
@@ -181,7 +189,11 @@ class Swissecho
     }
 
     /**
-     * @return mixed
+     * Send, and say what happened.
+     *
+     * @return SendResult|null The provider's verdict in one shape for every
+     *                         gateway. Null only for a custom gateway that
+     *                         does not report one.
      * @throws SwissechoException
      */
     public function go(): mixed
@@ -279,10 +291,10 @@ class Swissecho
     /**
      * @throws SwissechoException
      */
-    public function quick($phoneNumber, $message): void
+    public function quick($phoneNumber, $message): ?SendResult
     {
         //get default route
-        $this->route(null, function(SwissechoMessage $ms) use ($phoneNumber, $message) {
+        return $this->route(null, function(SwissechoMessage $ms) use ($phoneNumber, $message) {
            return $ms->line($message)
                ->to($phoneNumber);
         })->go();

@@ -1,0 +1,14 @@
+parameters:
+    level: 5
+    paths:
+        - src
+        - config
+    treatPhpDocTypesAsCertain: false
+    ignoreErrors:
+        # toSms(), toVoice() and toWhatsapp() are the convention a
+        # notification follows to opt in to a route. They are not on
+        # Laravel's Notification class, and Swissecho only calls one after
+        # checking the notification defines it.
+        -
+            message: '#^Call to an undefined method Illuminate\\Notifications\\Notification::to(Sms|Voice|Whatsapp)\(\)\.$#'
+            identifier: method.notFound

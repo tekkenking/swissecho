@@ -127,9 +127,9 @@ class SlackRoute extends BaseRoute
     }
 
     /**
-     * Post through whichever credential is configured.
+     * Post the already-built payload through the resolved credential.
      *
-     * @param  string  $message
+     * @param  array  $credential
      * @return array
      * @throws SwissechoException
      */

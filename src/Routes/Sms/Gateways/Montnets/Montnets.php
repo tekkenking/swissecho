@@ -66,4 +66,29 @@ class Montnets extends BaseGateway
 
         return md5($concatenatedString);
     }
+
+    /**
+     * Montnets reports its verdict in a `result` field: 0 accepted, with
+     * the message in `msgid`, and any other value rejected. Used only when
+     * that field is present; otherwise HTTP status decides.
+     * https://www.int-montnets.com/en/a2pkaifa/77.html
+     */
+    protected function interpretResponse(mixed $body, int $httpCode): array
+    {
+        $data = $this->decodeJson($body);
+
+        if($data === null || !array_key_exists('result', $data)) {
+            return parent::interpretResponse($body, $httpCode);
+        }
+
+        if((string) $data['result'] !== '0') {
+            return [
+                'success'       => false,
+                'error_code'    => (string) $data['result'],
+                'error_message' => isset($data['desc']) ? (string) $data['desc'] : 'Montnets rejected the message with result '.$data['result'],
+            ];
+        }
+
+        return ['success' => true, 'message_id' => isset($data['msgid']) ? (string) $data['msgid'] : null];
+    }
 }

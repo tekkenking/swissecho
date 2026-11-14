@@ -19,7 +19,7 @@ trait SwissechoGatewayTrait
     public mixed $to;
 
     /**
-     * @var string|mixed
+     * @var string
      */
     public string $sender = '';
 
@@ -48,9 +48,12 @@ trait SwissechoGatewayTrait
     private $responsePayload;
 
     /**
-     * @var array
+     * Protected, not private: a gateway that composes SendsPerRecipient in a
+     * subclass sets this once per request.
+     *
+     * @var mixed
      */
-    private $requestPayload;
+    protected $requestPayload;
 
     protected SwissechoMessage $msgBuilder;
     /**
@@ -59,7 +62,17 @@ trait SwissechoGatewayTrait
     private array $formattedResponse;
 
     /**
-     * @return void
+     * The outcome of the most recent request this gateway made.
+     */
+    protected ?SendResult $result = null;
+
+    public function result(): ?SendResult
+    {
+        return $this->result;
+    }
+
+    /**
+     * @return self
      */
     public function boot(): self
     {
@@ -85,12 +98,7 @@ trait SwissechoGatewayTrait
      */
     protected function processDependencies(): void
     {
-        if(!method_exists($this, 'checkDependencies')) {
-            return;
-        }
-
-        $dependenciesArr = $this->checkDependencies();
-        foreach ($dependenciesArr ?? [] as $depArr) {
+        foreach ($this->checkDependencies() as $depArr) {
             $className = $depArr[0];
             $composerRequire = $depArr[1];
 
@@ -143,44 +151,38 @@ trait SwissechoGatewayTrait
     }
 
     /**
+     * Run the request, or stand in for it in mock mode, and record what
+     * happened as a SendResult, in formattedResponse and as an AfterSend
+     * event.
+     *
      * @param $ch
-     * @return array|bool|string|void
+     * @return mixed The provider's reply on success, or an error array.
      */
     protected function execCurl($ch = null)
     {
         try {
-            //get response
             $ch = $this->hookBeforeExecCurl($ch);
 
-            if($ch === null) {
-                //Meaning we are running mock mode
-                $status = true;
-                $data = ['message' => 'Mock mode enabled. No request was sent to gateway.'];
-            } else {
-                [$status, $data] = $this->performRequest($ch);
-            }
-
-            $this->formatResponse($status, $data);
-
-            AfterSend::dispatch($this->insight(), $this->getFormattedResponse(), $this->identifier);
-
-            return $data;
-
+            $outcome = $ch === null
+                ? ['success' => true, 'mocked' => true, 'data' => ['message' => 'Mock mode enabled. No request was sent to gateway.']]
+                : $this->performRequest($ch);
         } catch (\Exception $exception) {
-            $this->formatResponse(false, $exception->getMessage());
-            AfterSend::dispatch($this->insight(), $this->getFormattedResponse(), $this->identifier);
+            $outcome = $this->failure($exception->getMessage());
+            $outcome['data'] = $exception->getMessage();
         }
+
+        return $this->record($outcome);
     }
 
     /**
-     * Execute the handle and decide whether the gateway actually accepted it.
+     * Execute the handle and let the gateway judge the reply.
      *
-     * A transport error is a failure, and so is any 4xx or 5xx: without the
-     * status check a rejection such as "invalid API key" was reported to the
-     * caller as a successful send.
+     * A transport error is always a failure. Past that, interpretResponse()
+     * decides: by HTTP status unless the gateway knows its provider's own
+     * conventions, such as an error reported inside an HTTP 200.
      *
      * @param $ch
-     * @return array{0: bool, 1: mixed}
+     * @return array<string, mixed>
      */
     protected function performRequest($ch): array
     {
@@ -188,26 +190,111 @@ trait SwissechoGatewayTrait
 
         $output = $this->responsePayload = curl_exec($ch);
 
-        $errorMessage = curl_errno($ch) ? curl_error($ch) : '';
+        $transportError = curl_errno($ch) ? curl_error($ch) : '';
         $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         $output = $this->hookAfterExecCurl($output);
 
-        if($errorMessage !== '') {
-            return [false, ['error' => true, 'message' => $errorMessage, 'http_code' => $httpCode]];
+        if($transportError !== '') {
+            return $this->failure($transportError, null, ['http_code' => $httpCode]);
         }
 
+        $verdict = $this->interpretResponse($output, $httpCode);
+
+        if(!($verdict['success'] ?? false)) {
+            return $this->failure(
+                $verdict['error_message'] ?? 'Gateway rejected the message',
+                $verdict['error_code'] ?? null,
+                ['http_code' => $httpCode, 'response' => $output]
+            );
+        }
+
+        return ['success' => true, 'data' => $output, 'message_id' => $verdict['message_id'] ?? null];
+    }
+
+    /**
+     * Decide whether the provider accepted the message.
+     *
+     * The default trusts the HTTP status alone. Override it in a gateway
+     * whose provider signals rejection another way, and return any of:
+     * success (bool), message_id, error_code, error_message.
+     *
+     * @param mixed $body     The provider's reply, as received.
+     * @param int   $httpCode
+     * @return array{success: bool, message_id?: ?string, error_code?: ?string, error_message?: ?string}
+     */
+    protected function interpretResponse(mixed $body, int $httpCode): array
+    {
         if($this->isHttpFailure($httpCode)) {
-            return [false, [
-                'error'     => true,
-                'message'   => 'Gateway rejected the message with HTTP '.$httpCode,
-                'http_code' => $httpCode,
-                'response'  => $output,
-            ]];
+            return [
+                'success'       => false,
+                'error_code'    => (string) $httpCode,
+                'error_message' => 'Gateway rejected the message with HTTP '.$httpCode,
+            ];
         }
 
-        return [true, $output];
+        return ['success' => true];
+    }
+
+    /**
+     * Decode a JSON reply for interpretResponse(), or null if it is not a
+     * JSON object. Large integers stay strings: Montnets' msgid is 64-bit
+     * and loses digits as a float.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function decodeJson(mixed $body): ?array
+    {
+        if(!is_string($body) || $body === '') {
+            return null;
+        }
+
+        $decoded = json_decode($body, true, 512, JSON_BIGINT_AS_STRING);
+
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    /**
+     * @param array<string, mixed> $extra Added to the legacy error array.
+     * @return array<string, mixed>
+     */
+    private function failure(string $message, ?string $code = null, array $extra = []): array
+    {
+        return [
+            'success'       => false,
+            'error_code'    => $code,
+            'error_message' => $message,
+            'data'          => ['error' => true, 'message' => $message] + $extra,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $outcome
+     * @return mixed
+     */
+    private function record(array $outcome): mixed
+    {
+        $mocked = (bool) ($outcome['mocked'] ?? false);
+        $raw = $this->responsePayload ?? null;
+
+        $this->result = new SendResult(
+            success: (bool) $outcome['success'],
+            messageId: isset($outcome['message_id']) ? (string) $outcome['message_id'] : null,
+            errorCode: isset($outcome['error_code']) ? (string) $outcome['error_code'] : null,
+            errorMessage: $outcome['error_message'] ?? null,
+            providerRes: ($mocked || $raw === false) ? null : $raw,
+            to: $this->to,
+            route: $this->msgBuilder->route,
+            gateway: $this->msgBuilder->gateway,
+            mocked: $mocked,
+        );
+
+        $this->formatResponse($this->result->success, $outcome['data']);
+
+        AfterSend::dispatch($this->insight(), $this->getFormattedResponse(), $this->identifier, $this->result);
+
+        return $outcome['data'];
     }
 
     /**
@@ -296,6 +383,20 @@ trait SwissechoGatewayTrait
             'identifier'=>  $this->msgBuilder->identifier,
             'timestamp' =>  now()->toDateTimeString()
         ];
+
+        //The same verdict in the same keys for every provider. 'status' and
+        //'partner_response' above are kept as they were for existing
+        //listeners; these are the ones to build on.
+        if($this->result !== null) {
+            $this->formattedResponse += [
+                'success'       => $this->result->success,
+                'message_id'    => $this->result->messageId,
+                'error_code'    => $this->result->errorCode,
+                'error_message' => $this->result->errorMessage,
+                'provider_res'  => $this->result->providerRes,
+                'mocked'        => $this->result->mocked,
+            ];
+        }
     }
 
     /**

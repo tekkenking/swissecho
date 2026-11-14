@@ -6,6 +6,7 @@ namespace Tekkenking\Swissecho\Routes;
 
 use Illuminate\Notifications\Notification;
 use Tekkenking\Swissecho\SwissechoException;
+use Tekkenking\Swissecho\SendResult;
 use Tekkenking\Swissecho\SwissechoMessage;
 
 abstract class BaseRoute
@@ -25,19 +26,18 @@ abstract class BaseRoute
      */
     protected string $route;
 
-    /**
-     * @var mixed
-     */
     protected SwissechoMessage $msgBuilder;
+
+    /**
+     * What the gateway reported for the send just made.
+     */
+    protected ?SendResult $lastResult = null;
 
     /**
      * @var array
      */
     private array $gatewayConfig;
 
-    /**
-     * @var mixed
-     */
     protected string $defaultPlace;
 
     protected string $place;
@@ -64,11 +64,6 @@ abstract class BaseRoute
         $this->config = config('swissecho');
     }
 
-    private function getDefaultRoute()
-    {
-        return $this->config['route'];
-    }
-
     /**
      * @param string $route
      * @return $this
@@ -76,7 +71,7 @@ abstract class BaseRoute
     public function route(string $route): static
     {
         $this->loadConfig();
-        $this->route = strtolower($route ?? $this->getDefaultRoute());
+        $this->route = strtolower($route);
         return $this;
     }
 
@@ -234,20 +229,31 @@ abstract class BaseRoute
     /**
      * @param $notifiable
      * @param Notification $notification
-     * @return void
+     * @return SendResult|null
      */
-    public function bootByNotification($notifiable, Notification $notification): void
+    public function bootByNotification($notifiable, Notification $notification): ?SendResult
     {
         $this->notifiable = $notifiable;
         $this->notification = $notification;
         $this->sendViaNotification();
+
+        return $this->lastResult;
+    }
+
+    /**
+     * The outcome of the send this route just made.
+     */
+    public function result(): ?SendResult
+    {
+        return $this->lastResult;
     }
 
     /**
      * @param $routeBuilder
-     * @return void
+     * @param $notifiable
+     * @return SendResult|null
      */
-    public function bootByDirect($routeBuilder, $notifiable = null): void
+    public function bootByDirect($routeBuilder, $notifiable = null): ?SendResult
     {
         $this->loadConfig();
 
@@ -258,6 +264,8 @@ abstract class BaseRoute
             $this->gateway($routeBuilder->gateway);
         }
         $this->directSend($routeBuilder);
+
+        return $this->lastResult;
     }
 
     public function setIdentifier(): void
@@ -315,16 +323,31 @@ abstract class BaseRoute
         return null;
     }
 
-    protected function msgBuilderInitForSendViaNotification($viaMethod): void
+    /**
+     * Resolve everything a send needs, then hand it to the gateway.
+     *
+     * The single path for both kinds of send. There used to be two
+     * near-identical methods, one per kind, and three separate bugs came
+     * from a fix reaching one and not the other: a gateway named on the
+     * message being ignored, a notifiable not supplying the recipient, and
+     * the sender being read before the place had chosen the gateway.
+     *
+     * Order matters. The recipient comes first because the place may depend
+     * on the notifiable; a gateway named on the message is an explicit
+     * choice and must be registered before the place gets a say; and the
+     * sender is resolved last because it falls back to the chosen gateway's
+     * configured sender, and SwissechoMessage::sender() keeps the first
+     * value it is given.
+     *
+     * @param SwissechoMessage $message
+     * @return void
+     * @throws SwissechoException
+     */
+    protected function prepareAndSend(SwissechoMessage $message): void
     {
-        $this->msgBuilder = $viaMethod;
+        $this->msgBuilder = $message;
         $this->msgBuilder->to($this->prepareTo());
 
-        //A gateway named on the message is an explicit choice, exactly as
-        //bootByDirect() treats it on the direct path. Without this the
-        //README's documented way of selecting a gateway from inside a
-        //notification was read by nothing, and the place's gateway won
-        //silently - so a custom gateway was never actually used.
         if($this->msgBuilder->gateway !== null) {
             $this->gateway($this->msgBuilder->gateway);
         }
@@ -333,11 +356,6 @@ abstract class BaseRoute
         $this->setPlaceConfig();
         $this->setGatewayFromPlace();
 
-        //After setGatewayFromPlace(), not before: prepareSender() falls back
-        //to the gateway's configured sender, and SwissechoMessage::sender()
-        //keeps the first value it is given. Resolving it first meant a send
-        //routed to SMS Broadcast by place('aus') went out carrying Termii's
-        //sender ID, because termii is the default gateway.
         $this->msgBuilder->sender($this->prepareSender());
 
         $this->setIdentifier();
@@ -347,64 +365,102 @@ abstract class BaseRoute
         $this->pushToGateway();
     }
 
+    /**
+     * @deprecated Use prepareAndSend(). Kept so a custom route class written
+     * against the old name keeps working.
+     */
+    protected function msgBuilderInitForSendViaNotification($viaMethod): void
+    {
+        $this->prepareAndSend($viaMethod);
+    }
+
+    /**
+     * @deprecated Use prepareAndSend(). Kept so a custom route class written
+     * against the old name keeps working.
+     */
     protected function msgBuilderInitForDirectSend($routeBuilder): void
     {
-        $this->msgBuilder = $routeBuilder;
-
-        //Same resolution the notification path uses: the message's own
-        //recipient wins, then the notifiable's phone attribute, then
-        //routeNotificationPhone(). Without this, makeNotifiable() had no
-        //effect on a direct send and the send failed with 'Invalid phone
-        //number' even though the notifiable could answer.
-        $this->msgBuilder->to($this->prepareTo());
-
-        $this->setPlace();
-        $this->setPlaceConfig();
-        $this->setGatewayFromPlace();
-
-        //See the note in msgBuilderInitForSendViaNotification().
-        $this->msgBuilder->sender($this->prepareSender());
-
-        $this->msgBuilder->route($this->route);
-        $this->msgBuilder->gateway($this->gateway);
-        $this->pushToGateway();
+        $this->prepareAndSend($routeBuilder);
     }
 
     protected function pushToGateway()
     {
-        if(!$this->msgBuilder->to) {
-            throw new SwissechoException('Notification: Invalid phone number');
-        }
+        $this->assertSendable();
 
-        //Validated here with the recipient, because the gateway constructors
-        //assign the body straight to a non-nullable string property: a
-        //message with no body gave 'Undefined array key "message"' and then
-        //a TypeError, which is an Error and so escapes catch(Exception).
-        //Slack and Telegram already raise a clear exception for this.
-        if(trim((string) ($this->msgBuilder->message ?? '')) === '') {
-            throw new SwissechoException('Notification: a message body is required. Set one with ->content() or ->line().');
-        }
-
-        $phonecode = $this->placeConfig['phonecode'] ?? null;
-
-        //setGatewayFromPlace() validates the place's gateway key; this one
-        //was read blind. A place configured with a gateway but no phonecode
-        //gave an undefined-key warning and then stripped the leading 0
-        //without prepending anything, so the provider received a national
-        //number and the message went nowhere.
-        if(empty($phonecode)) {
-            throw new SwissechoException(
-                'Notification: the place "'.$this->place.'" on the '.$this->route.' route has no phonecode configured.'
-            );
-        }
-
-        $this->msgBuilder->phonecode($phonecode);
+        $this->msgBuilder->phonecode($this->placeConfig['phonecode']);
 
         $this->msgBuilder->to($this->addPhoneCodeToPhoneNumberArr($this->convertPhoneNumberToArray($this->msgBuilder->to), $this->msgBuilder->phonecode));
         $gatewayConfig = $this->gatewayConfig();
         $gatewayClass = $gatewayConfig['class'];
 
-        (new $gatewayClass($gatewayConfig, $this->msgBuilder))->boot();
+        $this->assertSenderIsUsable($gatewayConfig);
+
+        $gateway = new $gatewayClass($gatewayConfig, $this->msgBuilder);
+        $gateway->boot();
+
+        //A gateway written without SwissechoGatewayTrait has no result to
+        //give, so go() returns null for it rather than failing.
+        $this->lastResult = method_exists($gateway, 'result') ? $gateway->result() : null;
+    }
+
+    /**
+     * A send needs a recipient, a body and a dialling code. Each is checked
+     * here with a message saying what to set, because the alternatives were
+     * worse: a missing body was a TypeError that escapes catch(Exception),
+     * and a place with no phonecode sent a national number that went
+     * nowhere.
+     *
+     * @return void
+     * @throws SwissechoException
+     */
+    protected function assertSendable(): void
+    {
+        if(!$this->msgBuilder->to) {
+            throw new SwissechoException('Notification: Invalid phone number');
+        }
+
+        if(trim((string) ($this->msgBuilder->message ?? '')) === '') {
+            throw new SwissechoException('Notification: a message body is required. Set one with ->content() or ->line().');
+        }
+
+        if(empty($this->placeConfig['phonecode'])) {
+            throw new SwissechoException(
+                'Notification: the place "'.$this->place.'" on the '.$this->route.' route has no phonecode configured.'
+            );
+        }
+    }
+
+    /**
+     * Enforce what the gateway's config says about senders.
+     *
+     * requires_sender: the provider rejects a message with none, so say so
+     * here instead of sending an empty one. sender_max_length: refuse a
+     * sender that is too long rather than shortening it to something the
+     * caller did not choose. Neither applies unless the gateway sets it.
+     *
+     * @param array $gatewayConfig
+     * @return void
+     * @throws SwissechoException
+     */
+    protected function assertSenderIsUsable(array $gatewayConfig): void
+    {
+        $sender = (string) ($this->msgBuilder->sender ?? '');
+
+        if(($gatewayConfig['requires_sender'] ?? false) && $sender === '') {
+            throw new SwissechoException(
+                'Notification: the '.$this->getGateway().' gateway needs a sender ID and none is set. '
+                . 'Set SWISSECHO_SENDER, a sender on the gateway in config, or ->sender() on the message.'
+            );
+        }
+
+        $max = (int) ($gatewayConfig['sender_max_length'] ?? 0);
+
+        if($max > 0 && mb_strlen($sender) > $max) {
+            throw new SwissechoException(
+                'Notification: the sender "'.$sender.'" is '.mb_strlen($sender).' characters and the '
+                . $this->getGateway().' gateway allows '.$max.'.'
+            );
+        }
     }
 
     protected function prepareTo(): mixed
@@ -436,7 +492,7 @@ abstract class BaseRoute
     protected function addPhoneCodeToPhoneNumberArr(array $tos, $phonecode): array
     {
         $toArr = [];
-        foreach ($tos ?? [] as $number) {
+        foreach ($tos as $number) {
             //A trailing comma in the recipient list, as a CSV column from the
             //database often has, left an empty entry here, and
             //addCountryCodeToPhoneNumber('', '234') returns '234' - a billed
@@ -466,6 +522,38 @@ abstract class BaseRoute
     protected function prepareSender(): mixed
     {
         return $this->msgBuilder->sender ?? null;
+    }
+
+    /**
+     * The sender the notifiable supplies for this message, if any.
+     *
+     * The first of the named methods to return something wins. A method
+     * that exists but returns nothing - a tenant who has not set a sender -
+     * is skipped, so the configured default still applies. It used to be
+     * taken as the answer, which left the message with no sender at all.
+     *
+     * @param string[] $methods
+     * @return string|null
+     */
+    protected function senderFromNotifiable(array $methods): ?string
+    {
+        if(!$this->notifiable) {
+            return null;
+        }
+
+        foreach ($methods as $method) {
+            if(!method_exists($this->notifiable, $method)) {
+                continue;
+            }
+
+            $sender = $this->notifiable->{$method}();
+
+            if($sender !== null && $sender !== '') {
+                return (string) $sender;
+            }
+        }
+
+        return null;
     }
 
     abstract public function sendViaNotification(): static;
