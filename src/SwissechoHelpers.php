@@ -16,8 +16,13 @@ if(! function_exists('addCountryCodeToPhoneNumber')) {
             $countryCode = substr($countryCode, 1);
         }
 
+        //A leading + means the caller has already supplied a country code, so
+        //return it as given. Without this, a number for another country was
+        //prepended with the place's code anyway: '+447911123456' with place
+        //'nga' became '234447911123456' and was billed as a real send to a
+        //number that cannot exist.
         if (str_starts_with($phone, '+')) {
-            $phone = substr($phone, 1);
+            return substr($phone, 1);
         }
 
         if (str_starts_with($phone, '0')) {

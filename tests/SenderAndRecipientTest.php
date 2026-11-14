@@ -65,6 +65,18 @@ class SenderAndRecipientTest extends TestCase
         $this->assertSame(['2348012345678'], $response['to']);
     }
 
+    public function test_an_international_number_survives_a_foreign_place(): void
+    {
+        $response = $this->sendSms(function (SwissechoMessage $ms) {
+            //A UK number sent while the place is Nigeria.
+            return $ms->to('+447911123456')->content('hello')->place('nga');
+        });
+
+        //This used to be ['234447911123456'] - billed, reported as a success,
+        //and impossible to deliver.
+        $this->assertSame(['447911123456'], $response['to']);
+    }
+
     public function test_a_place_without_a_phonecode_is_reported(): void
     {
         config(['swissecho.routes_options.sms.places.usa' => ['gateway' => 'termii']]);
