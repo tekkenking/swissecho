@@ -33,19 +33,44 @@ trait HttpRoute
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        $transport      = config('swissecho.transport', []);
+        $verify         = (bool) ($transport['verify_tls'] ?? true);
+        $timeout        = (int) ($transport['timeout'] ?? 30);
+        $connectTimeout = (int) ($transport['connect_timeout'] ?? 10);
 
-        $output = curl_exec($ch);
-        $error  = curl_error($ch);
-        $errno  = curl_errno($ch);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $verify);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $verify ? 2 : 0);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $timeout > 0 ? $timeout : 30);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $connectTimeout > 0 ? $connectTimeout : 10);
+
+        $output   = curl_exec($ch);
+        $error    = curl_error($ch);
+        $errno    = curl_errno($ch);
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         if ($errno) {
-            return ['error' => true, 'message' => $error];
+            return ['error' => true, 'message' => $error, 'http_code' => $httpCode];
         }
 
-        return json_decode((string) $output, true) ?? ['raw' => $output];
+        //is_array, not ??: a scalar JSON body such as 404 or "ok" decodes to
+        //an int or a string, which would be returned from a method declared
+        //: array and fail under strict_types.
+        $decoded = json_decode((string) $output, true);
+        $body    = is_array($decoded) ? $decoded : ['raw' => $output];
+
+        //Without this, a revoked Slack webhook replying 403 invalid_token
+        //became ['raw' => 'invalid_token'] and was reported as a success.
+        if ($httpCode >= 400) {
+            return [
+                'error'     => true,
+                'message'   => 'Gateway rejected the message with HTTP '.$httpCode,
+                'http_code' => $httpCode,
+                'response'  => $body,
+            ];
+        }
+
+        return $body + ['http_code' => $httpCode];
     }
 
     /**
