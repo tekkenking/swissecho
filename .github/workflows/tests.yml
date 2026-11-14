@@ -37,6 +37,14 @@ jobs:
           extensions: curl, mbstring, intl
           coverage: none
 
+      # Laravel 11 is out of security support, so every 11.x release now has
+      # unpatched advisories and Composer refuses to install any of them.
+      # The package still claims Laravel 11, so it is still tested there:
+      # this lifts the block for those jobs only.
+      - name: Allow Laravel 11 despite its advisories
+        if: matrix.laravel == '11.*'
+        run: composer config policy.advisories.block false
+
       - name: Install dependencies
         run: |
           composer require "illuminate/support:${{ matrix.laravel }}" "illuminate/notifications:${{ matrix.laravel }}" "illuminate/http:${{ matrix.laravel }}" --no-interaction --no-update
