@@ -50,6 +50,7 @@ Switch `'sms'` to `'whatsapp'`, `'voice'`, `'slack'` or `'telegram'` and the res
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Configuration](#configuration)
+  - [The Default Gateway for a Route](#the-default-gateway-for-a-route)
 - [WhatsApp Gateways](#whatsapp-gateways)
 - [Transport, TLS and Timeouts](#transport-tls-and-timeouts)
 - [Usage](#usage)
@@ -95,7 +96,9 @@ SWISSECHO_SENDER=MyApp         # Default sender name
 SWISSECHO_FAKE=log             # Mock mode: "log" (writes to file) or "mail" (sends email)
 SWISSECHO_FAKE_MAIL=           # Required when SWISSECHO_FAKE=mail. An address you own.
 SWISSECHO_ROUTE=sms            # Default route/channel: sms, voice, whatsapp, slack, telegram
-SWISSECHO_ROUTE_GATEWAY=       # Default gateway for the WhatsApp route only (default: kudisms)
+SWISSECHO_SMS_GATEWAY=termii        # Default gateway for the sms route
+SWISSECHO_VOICE_GATEWAY=termii      # Default gateway for the voice route
+SWISSECHO_WHATSAPP_GATEWAY=kudisms  # Default gateway for the whatsapp route
 SWISSECHO_DEFAULT_PLACE=       # Optional: default place/country code (e.g. nga) used when a notifiable doesn't specify one
 
 # ── Transport ──────────────────────────────────────────────
@@ -194,6 +197,32 @@ The most important sections are:
 | `route` | Default channel: `sms`, `voice`, `whatsapp`, `slack`, or `telegram` |
 | `routes_options` | Per-channel gateway definitions and geo-routing rules |
 
+### The Default Gateway for a Route
+
+Each route with more than one gateway has a default, set per route:
+
+```dotenv
+SWISSECHO_SMS_GATEWAY=termii
+SWISSECHO_VOICE_GATEWAY=termii
+SWISSECHO_WHATSAPP_GATEWAY=kudisms
+```
+
+That default is used when the resolved `place` names no gateway of its own. **A place's gateway always wins**, which is the whole point of geo-routing — see the next section. And naming a gateway on the send wins over both:
+
+```php
+swissecho()->route('sms', fn ($ms) => $ms->to('...')->content('hi'))
+    ->gateway('routemobile')   // beats the place and the route default
+    ->go();
+```
+
+So the order of precedence is: the gateway named on the send, then the place's gateway, then the route's default, then the first gateway listed in that route's `gateway_options`.
+
+Naming a gateway the route has no config for raises a `SwissechoException` listing the ones it does have.
+
+> **Changed in 1.1.0.** These three variables are new. `SWISSECHO_ROUTE_GATEWAY` still works as a fallback for the whatsapp route, which is the only block it ever appeared in, but it never actually did anything before 1.1.0 — the route's `gateway` key was never read, so the default was whichever gateway happened to be listed first.
+
+---
+
 ### Geo-Routing with `places`
 
 Each route (SMS, voice, WhatsApp) has a `places` map that **automatically picks the right gateway** based on the recipient's country:
@@ -267,21 +296,21 @@ swissecho()->route('whatsapp', fn ($ms) => $ms->to('2348012345678')->content('hi
     ->go();
 ```
 
-To make it the default instead, **two settings matter, not one.** `SWISSECHO_ROUTE_GATEWAY` sets the route's default gateway, but a `place` overrides it — and `nga` is mapped to `kudisms` out of the box:
+To make it the default instead, **two settings matter, not one.** `SWISSECHO_WHATSAPP_GATEWAY` sets the route's default, but a `place` overrides it — and `nga` is mapped to `kudisms` out of the box:
 
 ```php
 // config/swissecho.php
 'whatsapp' => [
-    'gateway' => env('SWISSECHO_ROUTE_GATEWAY', 'kudisms'),
+    'gateway' => env('SWISSECHO_WHATSAPP_GATEWAY', 'kudisms'),
     'places'  => [
         'nga' => ['phonecode' => '+234', 'gateway' => 'directwhatsapp'],  // change this too
     ],
 ],
 ```
 
-Setting the env var alone leaves Nigerian numbers going through Kudisms.
+Setting the variable alone leaves Nigerian numbers going through Kudisms. Alternatively drop the `gateway` key from the place and let the route default apply.
 
-> **Note.** `SWISSECHO_ROUTE_GATEWAY` is read in the `whatsapp` block only — it does not set a default for `sms`, `voice`, `slack` or `telegram`, each of which uses the first gateway in its own `gateway_options`. Do not set it to an SMS gateway name such as `termii`: the WhatsApp route would then look for a gateway it has no config for.
+> **Note.** Set `SWISSECHO_WHATSAPP_GATEWAY`, not `SWISSECHO_ROUTE_GATEWAY`. The latter is kept working only as a fallback for this route, and naming an SMS gateway such as `termii` in either now raises a clear `SwissechoException` rather than failing on an undefined key.
 
 Both send **one request per recipient**, because every WhatsApp API here takes a single recipient. A send to three numbers produces three requests and three `AfterSend` events, each naming the number it went to.
 

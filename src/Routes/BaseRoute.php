@@ -80,9 +80,28 @@ abstract class BaseRoute
         return $this;
     }
 
+    /**
+     * The route's default gateway.
+     *
+     * The route config has always been able to carry a 'gateway' key, and
+     * the shipped whatsapp block did, but nothing ever read it - this
+     * method went straight to array_key_first(), so the default depended on
+     * the order gateways happened to be listed in. The key is now honoured,
+     * with the first listed gateway as the last resort.
+     *
+     * @return string|null
+     */
     protected function getDefaultGateway()
     {
-        return array_key_first($this->config['routes_options'][$this->route]['gateway_options']);
+        $routeConfig = $this->config['routes_options'][$this->route] ?? [];
+
+        $declared = $routeConfig['gateway'] ?? null;
+
+        if(!empty($declared)) {
+            return strtolower((string) $declared);
+        }
+
+        return array_key_first($routeConfig['gateway_options'] ?? []);
     }
 
     protected function getGateway(): string
@@ -95,7 +114,20 @@ abstract class BaseRoute
      */
     private function loadGatewayConfig(): void
     {
-        $this->gatewayConfig = $this->config['routes_options'][$this->route]['gateway_options'][$this->getGateway()];
+        $options = $this->config['routes_options'][$this->route]['gateway_options'] ?? [];
+        $gateway = $this->getGateway();
+
+        //Say which gateway and what the alternatives are. This used to be a
+        //bare 'Undefined array key' warning followed by a null config, which
+        //told you nothing about the name being wrong or where to fix it.
+        if(!isset($options[$gateway])) {
+            throw new SwissechoException(
+                'Notification: the '.$this->route.' route has no gateway named "'.$gateway.'". '
+                . 'Configured for this route: '.(implode(', ', array_keys($options)) ?: 'none').'.'
+            );
+        }
+
+        $this->gatewayConfig = $options[$gateway];
     }
 
     /**

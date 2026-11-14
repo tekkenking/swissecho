@@ -39,6 +39,8 @@ return [
 
     'routes_options'    =>  [
         'sms'           =>  [
+            //The gateway used when the resolved place names none of its own.
+            'gateway'          =>  env('SWISSECHO_SMS_GATEWAY', 'termii'),
             'default_place'    =>  env('SWISSECHO_DEFAULT_PLACE', null),
             'gateway_options'  =>  [
                 'termii'        =>  [
@@ -155,6 +157,7 @@ return [
         ],
 
         'voice'  =>  [
+            'gateway'           =>  env('SWISSECHO_VOICE_GATEWAY', 'termii'),
             'default_place'     =>  env('SWISSECHO_DEFAULT_PLACE', null),
             'gateway_options'   =>  [
 
@@ -184,7 +187,10 @@ return [
 
         'whatsapp'  =>  [
 
-            'gateway'        => env('SWISSECHO_ROUTE_GATEWAY', 'kudisms'),
+            //SWISSECHO_ROUTE_GATEWAY is kept as a fallback: it only ever
+            //appeared in this block, so it is the one route it could have
+            //been meant for.
+            'gateway'        => env('SWISSECHO_WHATSAPP_GATEWAY', env('SWISSECHO_ROUTE_GATEWAY', 'kudisms')),
             'default_place'  => env('SWISSECHO_DEFAULT_PLACE', null),
 
             'gateway_options'  =>  [
