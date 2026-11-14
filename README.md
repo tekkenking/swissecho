@@ -95,7 +95,7 @@ SWISSECHO_SENDER=MyApp         # Default sender name
 SWISSECHO_FAKE=log             # Mock mode: "log" (writes to file) or "mail" (sends email)
 SWISSECHO_FAKE_MAIL=           # Required when SWISSECHO_FAKE=mail. An address you own.
 SWISSECHO_ROUTE=sms            # Default route/channel: sms, voice, whatsapp, slack, telegram
-SWISSECHO_ROUTE_GATEWAY=termii # Default gateway for the default route
+SWISSECHO_ROUTE_GATEWAY=       # Default gateway for the WhatsApp route only (default: kudisms)
 SWISSECHO_DEFAULT_PLACE=       # Optional: default place/country code (e.g. nga) used when a notifiable doesn't specify one
 
 # ── Transport ──────────────────────────────────────────────
@@ -248,7 +248,40 @@ If no default is configured anywhere and the notifiable doesn't have `routeNotif
 
 ## WhatsApp Gateways
 
-Two gateways serve the `whatsapp` route. `kudisms` is the default; name the other one explicitly or set `SWISSECHO_ROUTE_GATEWAY`.
+Two gateways serve the `whatsapp` route, and **they need completely different credentials**:
+
+| Gateway | Needs | Default? |
+|---|---|---|
+| `kudisms` | `KUDISMS_API_KEY`, `KUDISMS_URL`, `KUDISMS_TEMPLATE_CODE` | yes |
+| `directwhatsapp` | `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN` | no |
+
+`KUDISMS_TEMPLATE_CODE` applies to `kudisms` only. The Cloud API gateway has nothing to do with Kudisms and does not read it.
+
+### Choosing the Cloud API gateway
+
+Naming it on the send always works:
+
+```php
+swissecho()->route('whatsapp', fn ($ms) => $ms->to('2348012345678')->content('hi'))
+    ->gateway('directwhatsapp')
+    ->go();
+```
+
+To make it the default instead, **two settings matter, not one.** `SWISSECHO_ROUTE_GATEWAY` sets the route's default gateway, but a `place` overrides it — and `nga` is mapped to `kudisms` out of the box:
+
+```php
+// config/swissecho.php
+'whatsapp' => [
+    'gateway' => env('SWISSECHO_ROUTE_GATEWAY', 'kudisms'),
+    'places'  => [
+        'nga' => ['phonecode' => '+234', 'gateway' => 'directwhatsapp'],  // change this too
+    ],
+],
+```
+
+Setting the env var alone leaves Nigerian numbers going through Kudisms.
+
+> **Note.** `SWISSECHO_ROUTE_GATEWAY` is read in the `whatsapp` block only — it does not set a default for `sms`, `voice`, `slack` or `telegram`, each of which uses the first gateway in its own `gateway_options`. Do not set it to an SMS gateway name such as `termii`: the WhatsApp route would then look for a gateway it has no config for.
 
 Both send **one request per recipient**, because every WhatsApp API here takes a single recipient. A send to three numbers produces three requests and three `AfterSend` events, each naming the number it went to.
 
