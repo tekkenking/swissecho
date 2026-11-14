@@ -20,6 +20,13 @@ class TelegramRoute extends BaseRoute
      */
     public function gateway(string|null $gateway = null): static
     {
+        if($gateway !== null && $gateway !== '') {
+            throw new SwissechoException(
+                'Telegram: the telegram route has no gateways. Remove ->gateway(\''.$gateway.'\') - '
+                . 'configure TELEGRAM_BOT_TOKEN instead.'
+            );
+        }
+
         return $this;
     }
 

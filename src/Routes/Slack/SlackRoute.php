@@ -16,10 +16,20 @@ class SlackRoute extends BaseRoute
     protected array $requestPayload = [];
 
     /**
-     * Slack does not use per-gateway switching; override to be a no-op.
+     * Slack has no gateways to switch between.
+     *
+     * Naming one used to be accepted and ignored, while every other route
+     * raises a clear exception for a gateway it has no config for.
      */
     public function gateway(string|null $gateway = null): static
     {
+        if($gateway !== null && $gateway !== '') {
+            throw new SwissechoException(
+                'Slack: the slack route has no gateways. Remove ->gateway(\''.$gateway.'\') - '
+                . 'configure SLACK_WEBHOOK_URL or SLACK_BOT_TOKEN instead.'
+            );
+        }
+
         return $this;
     }
 
@@ -89,12 +99,24 @@ class SlackRoute extends BaseRoute
             throw new SwissechoException('Slack: message body is required');
         }
 
+        //Resolved before the mock branch, so a misconfiguration surfaces in
+        //development instead of only in production. The channel check used
+        //to sit inside postMessage(), past the mock, so a bot token with no
+        //channel reported success locally and threw live.
+        $credential = $this->resolveCredential();
+
+        //Set here, not in postMessage(), so the mock path reports the same
+        //recipient the live path would.
+        if ($credential['mode'] === 'webhook') {
+            $this->reportsRequestedRecipient = false;
+        }
+
         if (!($this->config['live'] ?? false)) {
             $this->handleHttpMock();
             return;
         }
 
-        $this->dispatchAfterSendEvent($this->postMessage($message));
+        $this->dispatchAfterSendEvent($this->postMessage($message, $credential));
     }
 
     /**
@@ -104,41 +126,65 @@ class SlackRoute extends BaseRoute
      * @return array
      * @throws SwissechoException
      */
-    protected function postMessage(string $message): array
+    protected function postMessage(string $message, array $credential): array
     {
-        $routeConfig = $this->config['routes_options']['slack'] ?? [];
-        $webhookUrl  = $routeConfig['auth']['webhook'] ?? null;
-        $token       = $routeConfig['auth']['token'] ?? null;
-
-        if ($webhookUrl) {
-            // Incoming Webhook mode — recipient is embedded in the webhook URL.
+        if ($credential['mode'] === 'webhook') {
+            //A webhook posts only to the channel it was created for, so no
+            //channel is sent. Reported as such rather than echoing a channel
+            //that was never used.
             $this->requestPayload = ['text' => $message];
 
-            return $this->postJson($webhookUrl, $this->requestPayload, [
+            return $this->postJson($credential['url'], $this->requestPayload, [
                 'Content-Type: application/json',
             ]);
         }
 
-        if ($token) {
-            // Bot Token mode — requires a channel.
-            $recipient = $this->msgBuilder->to;
+        $this->requestPayload = [
+            'channel' => $credential['channel'],
+            'text'    => $message,
+        ];
 
-            if (!$recipient) {
-                throw new SwissechoException('Slack: recipient channel is required when using a bot token');
-            }
+        return $this->postJson($credential['url'], $this->requestPayload, [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $credential['token'],
+        ]);
+    }
 
-            $this->requestPayload = [
-                'channel' => $recipient,
-                'text'    => $message,
+    /**
+     * Decide which credential this send uses, and fail early if it cannot.
+     *
+     * When both are configured the bot token is preferred if a channel was
+     * asked for, because a webhook cannot honour one: ->to('#alerts') used
+     * to be accepted and then silently dropped into the webhook's own
+     * channel, while the event reported the channel as delivered.
+     *
+     * @return array
+     * @throws SwissechoException
+     */
+    protected function resolveCredential(): array
+    {
+        $routeConfig = $this->config['routes_options']['slack'] ?? [];
+        $webhookUrl  = $routeConfig['auth']['webhook'] ?? null;
+        $token       = $routeConfig['auth']['token'] ?? null;
+        $channel     = $this->msgBuilder->to ?: ($routeConfig['default_channel'] ?? null);
+
+        if ($token && $channel) {
+            return [
+                'mode'    => 'token',
+                'token'   => $token,
+                'channel' => $channel,
+                'url'     => $routeConfig['url'] ?? 'https://slack.com/api/chat.postMessage',
             ];
+        }
 
-            return $this->postJson(
-                $routeConfig['url'] ?? 'https://slack.com/api/chat.postMessage',
-                $this->requestPayload,
-                [
-                    'Content-Type: application/json',
-                    'Authorization: Bearer ' . $token,
-                ]
+        if ($webhookUrl) {
+            return ['mode' => 'webhook', 'url' => $webhookUrl];
+        }
+
+        if ($token) {
+            throw new SwissechoException(
+                'Slack: a channel is required with a bot token. Set ->to(\'#channel\'), '
+                . 'or SLACK_DEFAULT_CHANNEL, or configure SLACK_WEBHOOK_URL instead.'
             );
         }
 
