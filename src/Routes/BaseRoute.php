@@ -315,16 +315,31 @@ abstract class BaseRoute
         return null;
     }
 
-    protected function msgBuilderInitForSendViaNotification($viaMethod): void
+    /**
+     * Resolve everything a send needs, then hand it to the gateway.
+     *
+     * The single path for both kinds of send. There used to be two
+     * near-identical methods, one per kind, and three separate bugs came
+     * from a fix reaching one and not the other: a gateway named on the
+     * message being ignored, a notifiable not supplying the recipient, and
+     * the sender being read before the place had chosen the gateway.
+     *
+     * Order matters. The recipient comes first because the place may depend
+     * on the notifiable; a gateway named on the message is an explicit
+     * choice and must be registered before the place gets a say; and the
+     * sender is resolved last because it falls back to the chosen gateway's
+     * configured sender, and SwissechoMessage::sender() keeps the first
+     * value it is given.
+     *
+     * @param SwissechoMessage $message
+     * @return void
+     * @throws SwissechoException
+     */
+    protected function prepareAndSend(SwissechoMessage $message): void
     {
-        $this->msgBuilder = $viaMethod;
+        $this->msgBuilder = $message;
         $this->msgBuilder->to($this->prepareTo());
 
-        //A gateway named on the message is an explicit choice, exactly as
-        //bootByDirect() treats it on the direct path. Without this the
-        //README's documented way of selecting a gateway from inside a
-        //notification was read by nothing, and the place's gateway won
-        //silently - so a custom gateway was never actually used.
         if($this->msgBuilder->gateway !== null) {
             $this->gateway($this->msgBuilder->gateway);
         }
@@ -333,11 +348,6 @@ abstract class BaseRoute
         $this->setPlaceConfig();
         $this->setGatewayFromPlace();
 
-        //After setGatewayFromPlace(), not before: prepareSender() falls back
-        //to the gateway's configured sender, and SwissechoMessage::sender()
-        //keeps the first value it is given. Resolving it first meant a send
-        //routed to SMS Broadcast by place('aus') went out carrying Termii's
-        //sender ID, because termii is the default gateway.
         $this->msgBuilder->sender($this->prepareSender());
 
         $this->setIdentifier();
@@ -347,27 +357,22 @@ abstract class BaseRoute
         $this->pushToGateway();
     }
 
+    /**
+     * @deprecated Use prepareAndSend(). Kept so a custom route class written
+     * against the old name keeps working.
+     */
+    protected function msgBuilderInitForSendViaNotification($viaMethod): void
+    {
+        $this->prepareAndSend($viaMethod);
+    }
+
+    /**
+     * @deprecated Use prepareAndSend(). Kept so a custom route class written
+     * against the old name keeps working.
+     */
     protected function msgBuilderInitForDirectSend($routeBuilder): void
     {
-        $this->msgBuilder = $routeBuilder;
-
-        //Same resolution the notification path uses: the message's own
-        //recipient wins, then the notifiable's phone attribute, then
-        //routeNotificationPhone(). Without this, makeNotifiable() had no
-        //effect on a direct send and the send failed with 'Invalid phone
-        //number' even though the notifiable could answer.
-        $this->msgBuilder->to($this->prepareTo());
-
-        $this->setPlace();
-        $this->setPlaceConfig();
-        $this->setGatewayFromPlace();
-
-        //See the note in msgBuilderInitForSendViaNotification().
-        $this->msgBuilder->sender($this->prepareSender());
-
-        $this->msgBuilder->route($this->route);
-        $this->msgBuilder->gateway($this->gateway);
-        $this->pushToGateway();
+        $this->prepareAndSend($routeBuilder);
     }
 
     protected function pushToGateway()

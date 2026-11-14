@@ -12,6 +12,16 @@ use Illuminate\Support\Facades\Facade;
 class Swissecho extends Facade
 {
     /**
+     * Resolve a fresh instance on every call.
+     *
+     * Facades cache the object they resolve, which would quietly turn the
+     * container's bind back into a singleton for anyone using the facade.
+     *
+     * @var bool
+     */
+    protected static $cached = false;
+
+    /**
      * Get the registered name of the component.
      *
      * @return string
