@@ -86,6 +86,7 @@ Switch `'sms'` to `'whatsapp'`, `'voice'`, `'slack'` or `'telegram'` and the res
 - [Webhooks](#webhooks)
 - [Helper Functions](#helper-functions)
 - [Adding a Custom SMS Gateway](#-adding-a-custom-sms-gateway)
+- [Provider Test Status](#provider-test-status)
 - [License](#license)
 
 ---
@@ -1392,6 +1393,27 @@ protected function interpretResponse(mixed $body, int $httpCode): array
 ```
 
 That is what fills in the `SendResult` your callers get back from `go()`.
+
+---
+
+## Provider Test Status
+
+Every gateway is covered by automated tests and built from its provider's published documentation, but **none has been confirmed with a real message on a real account**. Send one test message through a gateway before relying on it, and please report what you find.
+
+| Gateway | Route | What is unconfirmed |
+|---|---|---|
+| `twilio` | sms | New in 1.3.0. The request and the reading of the reply. |
+| `vonage` | sms | New in 1.3.0. The request and the reading of the reply. |
+| `tnz` | sms | Rewritten for REST API v3.00 in 1.3.0. The request and the reading of the reply. |
+| `directwhatsapp` | whatsapp | The request, the template send and the reading of the reply. |
+| `termii` | sms | The reading of the reply, which is new in 1.3.0. |
+| `nigerianbulksms` | sms | The reading of the reply, which is new in 1.3.0. |
+| `routemobile` | sms | The reading of the reply, which is new in 1.3.0. |
+| `smsbroadcast` | sms | The reading of the reply, which is new in 1.3.0. |
+| `montnets` | sms | The reading of the reply, which is new in 1.3.0. |
+| `textngxyz` | voice | The reading of the reply, which is new in 1.3.0. |
+| `wirepick` | sms | Its reply format is not documented, so success is judged by HTTP status alone. |
+| Slack and Telegram | slack, telegram | The message identifier and error fields in the result. |
 
 ---
 

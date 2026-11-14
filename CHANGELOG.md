@@ -2,7 +2,26 @@
 
 All notable changes to this package are recorded here. Versions follow [Semantic Versioning](https://semver.org/).
 
-## 1.3.0 — unreleased
+## 1.3.0 — 2026-11-14
+
+### Not tested against a live provider
+
+Every gateway in this release is covered by automated tests and built from its provider's published documentation, but **none has been confirmed with a real message on a real account**. Send one test message through a gateway before relying on it, and please report what you find.
+
+| Gateway | Route | What is unconfirmed |
+|---|---|---|
+| `twilio` | sms | New in this release. The request and the reading of the reply. |
+| `vonage` | sms | New in this release. The request and the reading of the reply. |
+| `tnz` | sms | Rewritten for REST API v3.00 in this release. The request and the reading of the reply. |
+| `directwhatsapp` | whatsapp | The request, the template send and the reading of the reply. |
+| `termii` | sms | The reading of the reply, which is new in this release. |
+| `nigerianbulksms` | sms | The reading of the reply, which is new in this release. |
+| `routemobile` | sms | The reading of the reply, which is new in this release. |
+| `smsbroadcast` | sms | The reading of the reply, which is new in this release. |
+| `montnets` | sms | The reading of the reply, which is new in this release. |
+| `textngxyz` | voice | The reading of the reply, which is new in this release. |
+| `wirepick` | sms | Its reply format is not documented, so success is judged by HTTP status alone. |
+| Slack and Telegram | slack, telegram | The message identifier and error fields in the result. |
 
 ### Added
 
