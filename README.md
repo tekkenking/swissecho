@@ -28,7 +28,7 @@ Switch `'sms'` to `'whatsapp'`, `'voice'`, `'slack'` or `'telegram'` and the res
 |---|---|---|
 | **SMS** | Traditional text messages | Termii, RouteMobile, SmsBroadcast (AU), TNZ (NZ), NigerianBulkSMS, Montnets, Wirepick |
 | **Voice** | Voice OTP / voice calls | Termii, Textng.xyz |
-| **WhatsApp** | WhatsApp messaging | KudiSMS |
+| **WhatsApp** | WhatsApp messaging | WhatsApp Cloud API (direct), KudiSMS |
 | **Slack** | Slack notifications | Incoming Webhook, Bot Token (`chat.postMessage`) |
 | **Telegram** | Telegram Bot messages | Telegram Bot API (`sendMessage`) |
 
@@ -50,6 +50,8 @@ Switch `'sms'` to `'whatsapp'`, `'voice'`, `'slack'` or `'telegram'` and the res
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Configuration](#configuration)
+- [WhatsApp Gateways](#whatsapp-gateways)
+- [Transport, TLS and Timeouts](#transport-tls-and-timeouts)
 - [Usage](#usage)
 - [SwissechoMessage API Reference](#swissechomessage-api-reference)
 - [Mock Mode (Development & Testing)](#mock-mode-development--testing)
@@ -91,15 +93,22 @@ Add these to your `.env` file. Only configure the gateways you plan to use:
 SWISSECHO_ENABLED=false        # Set to true for live/production sending
 SWISSECHO_SENDER=MyApp         # Default sender name
 SWISSECHO_FAKE=log             # Mock mode: "log" (writes to file) or "mail" (sends email)
-SWISSECHO_FAKE_MAIL=admin@example.com  # Email for mock mode when SWISSECHO_FAKE=mail
+SWISSECHO_FAKE_MAIL=           # Required when SWISSECHO_FAKE=mail. An address you own.
 SWISSECHO_ROUTE=sms            # Default route/channel: sms, voice, whatsapp, slack, telegram
 SWISSECHO_ROUTE_GATEWAY=termii # Default gateway for the default route
 SWISSECHO_DEFAULT_PLACE=       # Optional: default place/country code (e.g. nga) used when a notifiable doesn't specify one
+
+# ── Transport ──────────────────────────────────────────────
+SWISSECHO_VERIFY_TLS=true      # Verify the provider's TLS certificate. Keep this on.
+SWISSECHO_TIMEOUT=30           # Seconds to wait for a response. 0 means wait forever.
+SWISSECHO_CONNECT_TIMEOUT=10   # Seconds to wait for the connection itself
+SWISSECHO_REDACT_SECRETS=true  # Mask credentials in the AfterSend event payload
 
 # ── Termii (SMS & Voice) ──────────────────────────────────
 TERMII_API_KEY=your_api_key
 TERMII_SENDER_ID=YourSender
 TERMII_URL=https://api.ng.termii.com/api/sms/send
+TERMII_WEBHOOK_SECRET=         # Optional, for delivery-report callbacks
 
 # ── RouteMobile ────────────────────────────────────────────
 ROUTEMOBILE_USERNAME=your_username
@@ -118,7 +127,7 @@ TNZ_URL=https://api.tnz.co.nz/...
 
 # ── NigerianBulkSMS ───────────────────────────────────────
 NIGERIANBULKSMS_USERNAME=your_username
-NIGERIANBULKSM_PASSWORD=your_password
+NIGERIANBULKSMS_PASSWORD=your_password
 NIGERIANBULKSMS_URL=https://portal.nigeriabulksms.com/api/
 
 # ── Montnets ──────────────────────────────────────────────
@@ -130,7 +139,7 @@ MONTNETS_SMS_PASSWORD=your_password
 WIREPICK_SMS_URL=your_url
 WIREPICK_SMS_CLIENT=your_client
 WIREPICK_SMS_PASSWORD=your_password
-WIREPICK_SMS_AFFLIATE=your_affliate
+WIREPICK_SMS_AFFILIATE=your_affiliate
 
 # ── Textng.xyz (Voice) ────────────────────────────────────
 TEXTNGXYZ_API_KEY=your_api_key
@@ -138,7 +147,17 @@ TEXTNGXYZ_API_KEY=your_api_key
 # ── KudiSMS (WhatsApp) ────────────────────────────────────
 KUDISMS_API_KEY=your_api_key
 KUDISMS_URL=your_url
-KUDISMS_WHATSAPP_SENDER_ID=your_sender_id
+KUDISMS_TEMPLATE_CODE=         # Required. The template registered on your Kudisms account.
+
+# ── WhatsApp Cloud API (direct, no reseller) ──────────────
+WHATSAPP_PHONE_NUMBER_ID=      # From your WhatsApp app at developers.facebook.com
+WHATSAPP_ACCESS_TOKEN=         # A system user access token
+WHATSAPP_CLOUD_API_VERSION=v21.0   # Optional. Graph API version.
+WHATSAPP_CLOUD_HOST=           # Optional. Defaults to https://graph.facebook.com
+WHATSAPP_CLOUD_URL=            # Optional. Full endpoint override, e.g. a proxy.
+WHATSAPP_PREVIEW_URL=false     # Render a preview card for a link in the body
+WHATSAPP_TEMPLATE_NAME=        # Optional. See "WhatsApp gateways" below.
+WHATSAPP_TEMPLATE_LANGUAGE=en_US
 
 # ── Slack ─────────────────────────────────────────────────
 # Option A — Incoming Webhook (no channel needed in code)
@@ -154,6 +173,8 @@ TELEGRAM_DEFAULT_CHAT_ID=123456789
 # TELEGRAM_PARSE_MODE=HTML        # Optional: HTML or MarkdownV2
 # TELEGRAM_API_URL=               # Optional: override the API URL
 ```
+
+> **Renamed in this release.** `NIGERIANBULKSMS_PASSWORD`, `WIREPICK_SMS_AFFILIATE` and `TERMII_WEBHOOK_SECRET` were previously misspelled as `NIGERIANBULKSM_PASSWORD`, `WIREPICK_SMS_AFFLIATE` and `TERMI_WEBHOOK_SECRET`. The old names still work, so existing `.env` files keep running, but prefer the corrected ones.
 
 ### The Config File
 
@@ -222,6 +243,89 @@ Or, if you've published the config, set it per-route:
 ```
 
 If no default is configured anywhere and the notifiable doesn't have `routeNotificationPlace()`, Swissecho throws a `SwissechoException` listing the available places and how to set a default.
+
+---
+
+## WhatsApp Gateways
+
+Two gateways serve the `whatsapp` route. `kudisms` is the default; name the other one explicitly or set `SWISSECHO_ROUTE_GATEWAY`.
+
+Both send **one request per recipient**, because every WhatsApp API here takes a single recipient. A send to three numbers produces three requests and three `AfterSend` events, each naming the number it went to.
+
+### `directwhatsapp` — the WhatsApp Cloud API
+
+Meta's own endpoint, with no reseller in between. Create a WhatsApp app and number at [developers.facebook.com](https://developers.facebook.com), then:
+
+```dotenv
+WHATSAPP_PHONE_NUMBER_ID=123456789
+WHATSAPP_ACCESS_TOKEN=EAAG...
+```
+
+```php
+swissecho()->route('whatsapp', function ($ms) {
+    return $ms->to('2348012345678')->content('Your order has shipped');
+})->gateway('directwhatsapp')->go();
+```
+
+That posts to the documented endpoint:
+
+```
+POST https://graph.facebook.com/v21.0/{phone-number-id}/messages
+Authorization: Bearer {access_token}
+```
+
+`WHATSAPP_CLOUD_API_VERSION` and `WHATSAPP_CLOUD_HOST` are configurable so a new Graph API version needs nothing but an environment change. `WHATSAPP_CLOUD_URL` replaces the whole endpoint, for a proxy.
+
+#### The 24-hour window
+
+Free-form text only reaches a user **within 24 hours of their last message to you**. Outside that window WhatsApp requires an approved template, and a text message is accepted by the API and never delivered — which looks like success everywhere except the recipient's phone.
+
+Name a template and every send uses it, with the message body as its single body parameter:
+
+```dotenv
+WHATSAPP_TEMPLATE_NAME=order_update
+WHATSAPP_TEMPLATE_LANGUAGE=en_US
+```
+
+```php
+'template' => [
+    'name'     => env('WHATSAPP_TEMPLATE_NAME'),
+    'language' => env('WHATSAPP_TEMPLATE_LANGUAGE', 'en_US'),
+],
+```
+
+### `kudisms`
+
+A reseller. It requires the template code registered on your Kudisms account:
+
+```dotenv
+KUDISMS_API_KEY=your_api_key
+KUDISMS_URL=your_url
+KUDISMS_TEMPLATE_CODE=your_template_code
+```
+
+> **Changed in this release.** `KUDISMS_TEMPLATE_CODE` is new and required — the template code used to be hardcoded to a placeholder value, so every Kudisms WhatsApp send was rejected by the provider. Sends will throw until you set it.
+
+---
+
+## Transport, TLS and Timeouts
+
+Every gateway request goes out with the same transport settings, applied centrally rather than per gateway:
+
+```php
+// config/swissecho.php
+'transport' => [
+    'verify_tls'      => env('SWISSECHO_VERIFY_TLS', true),
+    'timeout'         => env('SWISSECHO_TIMEOUT', 30),
+    'connect_timeout' => env('SWISSECHO_CONNECT_TIMEOUT', 10),
+],
+```
+
+**Keep `verify_tls` on.** These requests carry your API keys, and some providers take an account password as a query parameter. With verification off, anything sitting between your app and the provider can present its own certificate and read them.
+
+If one provider has a genuinely broken certificate, turn it off while you chase them — but understand that it applies to every gateway, not just that one.
+
+A `timeout` of `0` means cURL waits forever. Sends run inline in the request unless the notification is queued, so a hung provider with no timeout holds a PHP worker open for as long as the socket stays up.
 
 ---
 
@@ -470,6 +574,8 @@ The `SwissechoMessage` class is the message builder used in callbacks and notifi
 
 When `SWISSECHO_ENABLED=false` (the default), **no real API calls are made**. Instead, messages are captured by the mock system.
 
+This applies in every environment, not just `local`. If you run staging with `SWISSECHO_ENABLED=false`, your mock log fills up there too.
+
 ### Mock via Log (Default)
 
 Messages are written to `storage/logs/swissecho_mock.log`:
@@ -489,6 +595,10 @@ SWISSECHO_FAKE=mail
 SWISSECHO_FAKE_MAIL=developer@example.com
 ```
 
+`SWISSECHO_FAKE_MAIL` has no default and must be an address you own — the mock email contains the real recipient and the real message body. Sending without it throws rather than mailing the body somewhere you don't control.
+
+An unrecognised `SWISSECHO_FAKE` value throws too, naming the valid drivers.
+
 ---
 
 ## Events
@@ -505,7 +615,48 @@ Tekkenking\Swissecho\Events\AfterSend
 |---|---|---|
 | `$insightPayload` | `array` | Contains `request` (the payload sent to the gateway) and `response` (raw gateway response) |
 | `$formattedResponse` | `array` | Structured response with `status`, `partner_response`, `from`, `to`, `body`, `route`, `gateway`, `identifier`, `timestamp` |
-| `$identifier` | `mixed` | The identifier attached to the message (e.g., user ID) |
+| `$identifier` | `string|null` | A short reference to the notifiable, e.g. `App\Models\User:42` |
+
+#### What `status` means
+
+`$formattedResponse['status']` is `false` when the request failed **or** when the provider rejected the message with a 4xx or 5xx. A rejection carries the detail:
+
+```php
+[
+    'error'     => true,
+    'message'   => 'Gateway rejected the message with HTTP 401',
+    'http_code' => 401,
+    'response'  => ['message' => 'Invalid API key'],
+]
+```
+
+A `status` of `true` means the provider accepted it. It is not a delivery receipt — for that you want the provider's own callback, which is what [Webhooks](#webhooks) is for.
+
+#### Credentials are masked
+
+`$insightPayload['request']` is the payload the gateway built, and for several providers that includes the credentials — an `api_key`, or a URL carrying `username=` and `password=`. Those values are masked before the event is dispatched:
+
+```php
+['api_key' => '[redacted]', 'phone_number' => '2348012345678']
+?username=acme&password=[redacted]&message=Hi+there
+```
+
+Everything that is not a credential is left alone, so the record of what you sent stays useful. Set `SWISSECHO_REDACT_SECRETS=false` if you need the raw request to debug a provider — and remember that anything logging the event is then logging credentials, and a queued listener writes them into your jobs table.
+
+#### The identifier
+
+`$identifier` is the notifiable's class and primary key, not the notifiable itself. Choose your own value by defining `routeNotificationIdentifier()` on the notifiable:
+
+```php
+public function routeNotificationIdentifier()
+{
+    return 'order-'.$this->order_id;
+}
+```
+
+An explicit `->identifier(...)` on the message builder always wins.
+
+> **Changed in this release.** `$identifier` used to be the notifiable **object**, so a listener logging `$event->formattedResponse` wrote the whole model — email, phone, addresses — into its log context. If you relied on `$event->identifier->someAttribute`, use `routeNotificationIdentifier()` instead.
 
 ### Listening to the Event
 
@@ -545,19 +696,82 @@ class LogSmsDelivery
 
 ## Webhooks
 
-Swissecho includes a built-in webhook handler for receiving delivery reports or callbacks from gateway providers. The webhook system validates a secret key and routes the request to the appropriate gateway handler.
+Providers send delivery reports and other callbacks to a route Swissecho registers for you:
 
-Configure webhooks per gateway in `config/swissecho.php`:
+```
+POST /webhook/swissecho/route/{route}/{gateway}/{secret}
+```
+
+for example `https://yourapp.com/webhook/swissecho/route/sms/termii/your-secret-here`.
+
+Configure a secret per gateway in `config/swissecho.php`:
 
 ```php
-'{$gateway}' => [
+'termii' => [
     // ...
     'webhook' => [
-        'secret' => env('TERMI_WEBHOOK_SECRET', 'your-secret-here'),
-        'handle' => 'webhook'   // method name on the gateway class
-    ]
+        'secret' => env('TERMII_WEBHOOK_SECRET'),
+    ],
 ],
 ```
+
+The secret in the URL is compared against that value with `hash_equals`. A gateway with no `webhook` block returns 404, an unset secret returns 401, and a wrong secret returns 401 — nothing is dispatched in any of those cases.
+
+### Handling a callback
+
+A verified callback dispatches an event:
+
+```php
+Tekkenking\Swissecho\Events\WebhookReceived
+```
+
+| Property | Type | Description |
+|---|---|---|
+| `$route` | `string` | The route it arrived on, e.g. `sms` |
+| `$gateway` | `string` | The gateway key, e.g. `termii` |
+| `$payload` | `array` | The request body and query |
+| `$headers` | `array` | The request headers |
+
+It carries plain arrays rather than the `Request` object, so a **queued** listener can serialise it:
+
+```php
+<?php
+
+namespace App\Listeners;
+
+use Tekkenking\Swissecho\Events\WebhookReceived;
+
+class RecordDeliveryReport
+{
+    public function handle(WebhookReceived $event): void
+    {
+        if ($event->gateway === 'termii') {
+            DeliveryReport::create([
+                'message_id' => $event->payload['message_id'] ?? null,
+                'status'     => $event->payload['status'] ?? null,
+            ]);
+        }
+    }
+}
+```
+
+### Using a class instead of the event
+
+Name one in the webhook block and it is called in place of the event:
+
+```php
+'webhook' => [
+    'secret' => env('TERMII_WEBHOOK_SECRET'),
+    'class'  => \App\Webhooks\TermiiCallback::class,
+    'handle' => 'handle',   // the method to call, passed the Request
+],
+```
+
+### Security note
+
+The secret travels as a URL path segment, so it appears in web server access logs, Laravel's request logs and any exception report that captures the full URL. Rotate it if those logs are shared, and prefer the provider's own signature header where one exists.
+
+> **Changed in this release.** The previous handler never worked: the route file was never registered, the config was read at route level rather than per gateway, and the secret was never actually compared. `'handle'` is also no longer a method on the gateway class — gateway classes need a message to construct, so they were never a viable place for this.
 
 ---
 
