@@ -57,30 +57,42 @@ class Twilio extends BaseGateway
     /**
      * Who the message is from.
      *
-     * A Messaging Service wins when one is configured, since it picks the
-     * number itself. Otherwise the gateway's own `from`, then the sender on
-     * the message. `from` exists as its own setting because a Twilio sender
-     * is usually a phone number, not the short alphanumeric ID other
-     * gateways share through SWISSECHO_SENDER.
+     * $this->sender has already been resolved the way every gateway's is:
+     * the sender set on the message, then the notifiable's own, then this
+     * gateway's `sender` (TWILIO_FROM), then SWISSECHO_SENDER. So a sender
+     * chosen for this message - a tenant's business name on a shared
+     * platform, say - always wins over the configured default.
+     *
+     * A Messaging Service picks the number itself, so it stands in for the
+     * configured default only: it is used when nothing chose a sender for
+     * this message.
      *
      * @return array<string, string>
      * @throws SwissechoException
      */
     protected function origin(): array
     {
-        if(!empty($this->config['messaging_service_sid'])) {
+        if(!empty($this->config['messaging_service_sid']) && !$this->senderWasChosenForThisMessage()) {
             return ['MessagingServiceSid' => (string) $this->config['messaging_service_sid']];
         }
 
-        $from = ($this->config['from'] ?? null) ?: $this->sender;
-
-        if(empty($from)) {
+        if($this->sender === '') {
             throw new SwissechoException(
                 'Twilio: set TWILIO_FROM or TWILIO_MESSAGING_SERVICE_SID, or ->sender() on the message.'
             );
         }
 
-        return ['From' => (string) $from];
+        return ['From' => $this->sender];
+    }
+
+    /**
+     * True when the sender is not simply the configured fallback.
+     */
+    protected function senderWasChosenForThisMessage(): bool
+    {
+        $fallback = (string) (($this->config['sender'] ?? null) ?: config('swissecho.sender'));
+
+        return $this->sender !== '' && $this->sender !== $fallback;
     }
 
     /**

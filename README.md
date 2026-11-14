@@ -173,8 +173,8 @@ WIREPICK_SMS_AFFILIATE=your_affiliate
 # ── Twilio ────────────────────────────────────────────────
 TWILIO_ACCOUNT_SID=ACxxxxxxxx
 TWILIO_AUTH_TOKEN=your_auth_token
-TWILIO_FROM=+15005550006            # A Twilio number, or use a Messaging Service instead
-TWILIO_MESSAGING_SERVICE_SID=       # Optional. Wins over TWILIO_FROM when set.
+TWILIO_FROM=+15005550006            # This gateway's default sender: a Twilio number
+TWILIO_MESSAGING_SERVICE_SID=       # Optional. Used in place of TWILIO_FROM. A sender on the message still wins.
 TWILIO_URL=                         # Optional. Full endpoint override, e.g. a proxy.
 
 # ── Vonage ────────────────────────────────────────────────
@@ -342,7 +342,30 @@ The sender is taken from the first of these that is set:
 3. the `sender` key on the gateway in `config/swissecho.php`
 4. `SWISSECHO_SENDER`
 
-It is sent exactly as given. Two optional keys on any gateway control what is allowed:
+A notifiable method that returns nothing is skipped, so the next in the list applies.
+
+That order is what lets one application send on behalf of many businesses. The platform's own name is the default in `SWISSECHO_SENDER`, and each business's name comes from the notifiable, or is set on the message:
+
+```php
+class Customer extends Model
+{
+    use Notifiable;
+
+    public function routeNotificationSmsSender(): ?string
+    {
+        return $this->business->sms_sender;   // "PartyShop", not the platform's name
+    }
+
+    public function routeNotificationPlace(): string
+    {
+        return $this->country;                // "nga", "usa", "gbr" - picks the gateway too
+    }
+}
+```
+
+With `nga` mapped to one gateway and `usa` to another under `places`, the same `$customer->notify(...)` goes out through the right provider for each customer's country, carrying the right business's name.
+
+The sender is sent exactly as given. Two optional keys on any gateway control what is allowed:
 
 ```php
 'termii' => [
@@ -386,7 +409,7 @@ $result = swissecho()->route('sms', function ($ms) {
 $result->messageId;   // Twilio's SID, e.g. SMxxxxxxxx
 ```
 
-The sender is `TWILIO_MESSAGING_SERVICE_SID` if you set one, otherwise `TWILIO_FROM`, otherwise the sender on the message. It has its own setting because a Twilio sender is usually a phone number rather than the short ID other gateways share through `SWISSECHO_SENDER`.
+`TWILIO_FROM` is this gateway's default sender, and it is resolved like every other gateway's: a sender set on the message or supplied by the notifiable wins over it, and it wins over `SWISSECHO_SENDER`. If you set `TWILIO_MESSAGING_SERVICE_SID`, the Messaging Service is used in place of the default — but a sender chosen for the message still wins.
 
 ### `vonage`
 
@@ -401,6 +424,8 @@ $result = swissecho()->route('sms', function ($ms) {
     return $ms->to('+447911123456')->content('Your code is 1234');
 })->gateway('vonage')->go();
 ```
+
+`VONAGE_FROM` is this gateway's default sender; a sender set on the message or supplied by the notifiable wins over it.
 
 Vonage answers HTTP 200 whether or not it accepted the message, so `$result->success` is read from the status inside its reply, and `$result->errorCode` is Vonage's own status code.
 

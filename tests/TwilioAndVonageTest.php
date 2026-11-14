@@ -30,12 +30,12 @@ class TwilioAndVonageTest extends TestCase
         $twilio = 'swissecho.routes_options.sms.gateway_options.twilio.';
         $app['config']->set($twilio.'account_sid', 'ACtest');
         $app['config']->set($twilio.'auth.token', 'twilio-token');
-        $app['config']->set($twilio.'from', '+15005550006');
+        $app['config']->set($twilio.'sender', '+15005550006');
 
         $vonage = 'swissecho.routes_options.sms.gateway_options.vonage.';
         $app['config']->set($vonage.'auth.api_key', 'vonage-key');
         $app['config']->set($vonage.'auth.api_secret', 'vonage-secret');
-        $app['config']->set($vonage.'from', 'MyApp');
+        $app['config']->set($vonage.'sender', 'MyApp');
     }
 
     private function build(string $class, array $config, ?string $sender = null): array
@@ -63,7 +63,7 @@ class TwilioAndVonageTest extends TestCase
 
     public function test_twilio_builds_the_documented_request(): void
     {
-        $payload = $this->build(Twilio::class, ['account_sid' => 'ACtest', 'auth' => ['token' => 't'], 'from' => '+15005550006']);
+        $payload = $this->build(Twilio::class, ['account_sid' => 'ACtest', 'auth' => ['token' => 't']], '+15005550006');
 
         //E.164 with the plus, and a phone-number sender left whole.
         $this->assertSame(['To' => '+2348012345678', 'Body' => 'hello', 'From' => '+15005550006'], $payload);
@@ -71,13 +71,26 @@ class TwilioAndVonageTest extends TestCase
 
     public function test_twilio_prefers_a_messaging_service(): void
     {
+        //The sender here is only the gateway's configured default, so the
+        //Messaging Service stands in for it.
         $payload = $this->build(Twilio::class, [
             'account_sid' => 'ACtest', 'auth' => ['token' => 't'],
-            'from' => '+15005550006', 'messaging_service_sid' => 'MGtest',
-        ]);
+            'sender' => '+15005550006', 'messaging_service_sid' => 'MGtest',
+        ], '+15005550006');
 
         $this->assertSame('MGtest', $payload['MessagingServiceSid']);
         $this->assertArrayNotHasKey('From', $payload);
+    }
+
+    public function test_a_sender_chosen_for_the_message_beats_the_messaging_service(): void
+    {
+        $payload = $this->build(Twilio::class, [
+            'account_sid' => 'ACtest', 'auth' => ['token' => 't'],
+            'sender' => '+15005550006', 'messaging_service_sid' => 'MGtest',
+        ], 'PartyShop');
+
+        $this->assertSame('PartyShop', $payload['From']);
+        $this->assertArrayNotHasKey('MessagingServiceSid', $payload);
     }
 
     public function test_twilio_falls_back_to_the_message_sender(): void
@@ -113,7 +126,7 @@ class TwilioAndVonageTest extends TestCase
 
     public function test_vonage_builds_the_documented_request(): void
     {
-        $payload = $this->build(Vonage::class, ['auth' => ['api_key' => 'k', 'api_secret' => 's'], 'from' => 'MyApp']);
+        $payload = $this->build(Vonage::class, ['auth' => ['api_key' => 'k', 'api_secret' => 's']], 'MyApp');
 
         $this->assertSame(
             ['api_key' => 'k', 'api_secret' => 's', 'to' => '2348012345678', 'from' => 'MyApp', 'text' => 'hello'],
@@ -126,7 +139,7 @@ class TwilioAndVonageTest extends TestCase
         $this->expectException(SwissechoException::class);
         $this->expectExceptionMessage('VONAGE_API_KEY');
 
-        $this->build(Vonage::class, ['from' => 'MyApp']);
+        $this->build(Vonage::class, [], 'MyApp');
     }
 
     public static function replies(): array

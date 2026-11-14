@@ -124,10 +124,12 @@ return [
                         'token'   =>  env('TWILIO_AUTH_TOKEN')
                     ],
 
-                    //Who the message is from: a Twilio number, or leave it
-                    //empty and name a Messaging Service, which picks the
-                    //number itself. A Messaging Service wins if both are set.
-                    'from'                  =>  env('TWILIO_FROM'),
+                    //The default sender for this gateway: a Twilio number.
+                    //Or leave it empty and name a Messaging Service, which
+                    //picks the number itself and is used in its place. A
+                    //sender set on the message, or supplied by the
+                    //notifiable, wins over both.
+                    'sender'                =>  env('TWILIO_FROM'),
                     'messaging_service_sid' =>  env('TWILIO_MESSAGING_SERVICE_SID'),
 
                     //Only to pin a proxy. Left empty, the documented
@@ -139,7 +141,9 @@ return [
                 'vonage' => [
                     'class' =>  Vonage::class,
                     'url'   =>  env('VONAGE_URL', 'https://rest.nexmo.com/sms/json'),
-                    'from'  =>  env('VONAGE_FROM'),
+                    //The default sender for this gateway. A sender set on
+                    //the message, or supplied by the notifiable, wins.
+                    'sender' =>  env('VONAGE_FROM'),
                     'auth'  =>  [
                         'api_key'    =>  env('VONAGE_API_KEY'),
                         'api_secret' =>  env('VONAGE_API_SECRET')

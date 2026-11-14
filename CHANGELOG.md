@@ -10,6 +10,7 @@ All notable changes to this package are recorded here. Versions follow [Semantic
 - **Each provider's reply is read by its own rule.** Success used to mean an HTTP status under 400, so a rejection inside an HTTP 200 — which SMS Broadcast, NigeriaBulkSMS, RouteMobile, Vonage and others do — was reported as a successful send. Gateways now override `interpretResponse()` with their provider's documented format; any without a rule keep the HTTP check.
 - **Twilio and Vonage** SMS gateways.
 - `requires_sender` and `sender_max_length` on any gateway's config.
+- A notifiable whose sender method returns nothing now falls back to the gateway's sender and then `SWISSECHO_SENDER`. It used to leave the message with no sender at all.
 - Recipients are formatted by libphonenumber, which handles spaces, brackets and dashes in a number and countries whose rules differ, such as Italy keeping its leading 0.
 - CI on PHP 8.2 to 8.4 against Laravel 11 to 13, and PHPStan at level 5.
 - A full API reference in the README.

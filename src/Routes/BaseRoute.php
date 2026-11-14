@@ -524,6 +524,38 @@ abstract class BaseRoute
         return $this->msgBuilder->sender ?? null;
     }
 
+    /**
+     * The sender the notifiable supplies for this message, if any.
+     *
+     * The first of the named methods to return something wins. A method
+     * that exists but returns nothing - a tenant who has not set a sender -
+     * is skipped, so the configured default still applies. It used to be
+     * taken as the answer, which left the message with no sender at all.
+     *
+     * @param string[] $methods
+     * @return string|null
+     */
+    protected function senderFromNotifiable(array $methods): ?string
+    {
+        if(!$this->notifiable) {
+            return null;
+        }
+
+        foreach ($methods as $method) {
+            if(!method_exists($this->notifiable, $method)) {
+                continue;
+            }
+
+            $sender = $this->notifiable->{$method}();
+
+            if($sender !== null && $sender !== '') {
+                return (string) $sender;
+            }
+        }
+
+        return null;
+    }
+
     abstract public function sendViaNotification(): static;
 
     abstract public function directSend($routeBuilder): static;

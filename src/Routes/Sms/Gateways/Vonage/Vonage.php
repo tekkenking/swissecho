@@ -53,19 +53,20 @@ class Vonage extends BaseGateway
     }
 
     /**
-     * The gateway's own `from`, then the sender on the message.
+     * The sender, resolved the way every gateway's is: the one set on the
+     * message, then the notifiable's own, then this gateway's `sender`
+     * (VONAGE_FROM), then SWISSECHO_SENDER. A sender chosen for this
+     * message always wins over the configured default.
      *
      * @throws SwissechoException
      */
     protected function from(): string
     {
-        $from = ($this->config['from'] ?? null) ?: $this->sender;
-
-        if(empty($from)) {
+        if($this->sender === '') {
             throw new SwissechoException('Vonage: set VONAGE_FROM, or ->sender() on the message.');
         }
 
-        return (string) $from;
+        return $this->sender;
     }
 
     /**

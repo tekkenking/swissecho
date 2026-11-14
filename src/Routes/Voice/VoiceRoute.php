@@ -36,17 +36,11 @@ class VoiceRoute extends BaseRoute
      */
     protected function prepareSender(): mixed
     {
-        if (!$this->msgBuilder->sender) {
-
-            if ($this->notifiable
-                && method_exists($this->notifiable, 'routeNotificationVoiceSender')) {
-                return $this->notifiable->routeNotificationVoiceSender();
-            }
-
-            return $this->gatewaySender();
+        if($this->msgBuilder->sender) {
+            return $this->msgBuilder->sender;
         }
 
-        return $this->msgBuilder->sender;
+        return $this->senderFromNotifiable(['routeNotificationVoiceSender']) ?: $this->gatewaySender();
     }
 
 }

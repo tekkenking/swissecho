@@ -134,7 +134,7 @@ class DocumentedExamplesTest extends TestCase
         config([
             'swissecho.routes_options.sms.gateway_options.twilio.account_sid' => 'ACxxxxxxxx',
             'swissecho.routes_options.sms.gateway_options.twilio.auth.token' => 'your_auth_token',
-            'swissecho.routes_options.sms.gateway_options.twilio.from' => '+15005550006',
+            'swissecho.routes_options.sms.gateway_options.twilio.sender' => '+15005550006',
         ]);
 
         $result = (new Swissecho())->route('sms', function ($ms) {
@@ -150,7 +150,7 @@ class DocumentedExamplesTest extends TestCase
         config([
             'swissecho.routes_options.sms.gateway_options.vonage.auth.api_key' => 'your_api_key',
             'swissecho.routes_options.sms.gateway_options.vonage.auth.api_secret' => 'your_api_secret',
-            'swissecho.routes_options.sms.gateway_options.vonage.from' => 'MyApp',
+            'swissecho.routes_options.sms.gateway_options.vonage.sender' => 'MyApp',
         ]);
 
         $result = (new Swissecho())->route('sms', function ($ms) {
@@ -166,7 +166,7 @@ class DocumentedExamplesTest extends TestCase
             'swissecho.routes_options.sms.places.usa' => ['gateway' => 'twilio', 'phonecode' => '1'],
             'swissecho.routes_options.sms.gateway_options.twilio.account_sid' => 'ACxxxxxxxx',
             'swissecho.routes_options.sms.gateway_options.twilio.auth.token' => 'your_auth_token',
-            'swissecho.routes_options.sms.gateway_options.twilio.from' => '+15005550006',
+            'swissecho.routes_options.sms.gateway_options.twilio.sender' => '+15005550006',
         ]);
 
         $result = (new Swissecho())->route('sms', function ($ms) {
