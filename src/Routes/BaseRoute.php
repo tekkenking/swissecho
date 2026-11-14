@@ -128,10 +128,18 @@ abstract class BaseRoute
     {
         $defaultPlace = $this->config['routes_options'][$this->route]['default_place'] ?? null;
 
+        //Read it first and check it is usable: entering this branch on
+        //method_exists alone and calling strtolower() on the result was a
+        //TypeError under strict_types whenever a notifiable had no country
+        //set, even with default_place configured right below.
+        $notifiablePlace = ($this->notifiable && method_exists($this->notifiable, 'routeNotificationPlace'))
+            ? $this->notifiable->routeNotificationPlace()
+            : null;
+
         if ($this->msgBuilder->place) {
             $this->place = strtolower($this->msgBuilder->place);
-        } else if($this->notifiable && method_exists($this->notifiable, 'routeNotificationPlace')) {
-            $this->place = strtolower($this->notifiable->routeNotificationPlace());
+        } else if(is_string($notifiablePlace) && $notifiablePlace !== '') {
+            $this->place = strtolower($notifiablePlace);
         } else if ($defaultPlace) {
             $this->place = strtolower($defaultPlace);
         } else {
@@ -231,10 +239,17 @@ abstract class BaseRoute
     {
         $this->msgBuilder = $viaMethod;
         $this->msgBuilder->to($this->prepareTo());
-        $this->msgBuilder->sender($this->prepareSender());
         $this->setPlace();
         $this->setPlaceConfig();
         $this->setGatewayFromPlace();
+
+        //After setGatewayFromPlace(), not before: prepareSender() falls back
+        //to the gateway's configured sender, and SwissechoMessage::sender()
+        //keeps the first value it is given. Resolving it first meant a send
+        //routed to SMS Broadcast by place('aus') went out carrying Termii's
+        //sender ID, because termii is the default gateway.
+        $this->msgBuilder->sender($this->prepareSender());
+
         $this->setIdentifier();
         $this->msgBuilder->route($this->route);
         $this->msgBuilder->gateway($this->gateway);
@@ -245,10 +260,13 @@ abstract class BaseRoute
     protected function msgBuilderInitForDirectSend($routeBuilder): void
     {
         $this->msgBuilder = $routeBuilder;
-        $this->msgBuilder->sender($this->prepareSender());
         $this->setPlace();
         $this->setPlaceConfig();
         $this->setGatewayFromPlace();
+
+        //See the note in msgBuilderInitForSendViaNotification().
+        $this->msgBuilder->sender($this->prepareSender());
+
         $this->msgBuilder->route($this->route);
         $this->msgBuilder->gateway($this->gateway);
         $this->pushToGateway();
@@ -260,7 +278,20 @@ abstract class BaseRoute
             throw new SwissechoException('Notification: Invalid phone number');
         }
 
-        $this->msgBuilder->phonecode($this->placeConfig['phonecode']);
+        $phonecode = $this->placeConfig['phonecode'] ?? null;
+
+        //setGatewayFromPlace() validates the place's gateway key; this one
+        //was read blind. A place configured with a gateway but no phonecode
+        //gave an undefined-key warning and then stripped the leading 0
+        //without prepending anything, so the provider received a national
+        //number and the message went nowhere.
+        if(empty($phonecode)) {
+            throw new SwissechoException(
+                'Notification: the place "'.$this->place.'" on the '.$this->route.' route has no phonecode configured.'
+            );
+        }
+
+        $this->msgBuilder->phonecode($phonecode);
 
         $this->msgBuilder->to($this->addPhoneCodeToPhoneNumberArr($this->convertPhoneNumberToArray($this->msgBuilder->to), $this->msgBuilder->phonecode));
         $gatewayConfig = $this->gatewayConfig();
@@ -296,7 +327,15 @@ abstract class BaseRoute
     {
         $toArr = [];
         foreach ($tos ?? [] as $number) {
-            $toArr[] = addCountryCodeToPhoneNumber($number, $phonecode);
+            //A trailing comma in the recipient list, as a CSV column from the
+            //database often has, left an empty entry here, and
+            //addCountryCodeToPhoneNumber('', '234') returns '234' - a billed
+            //message addressed to the bare country code.
+            if(trim((string) $number) === '') {
+                continue;
+            }
+
+            $toArr[] = addCountryCodeToPhoneNumber(trim((string) $number), $phonecode);
         }
 
         return $toArr;
