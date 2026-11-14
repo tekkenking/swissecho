@@ -11,7 +11,6 @@ use Tekkenking\Swissecho\Routes\Sms\Gateways\Smsbroadcast\SmsBroadCastDotComDotA
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Termii\Termii;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Tnz\Tnz;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Wirepick\Wirepick;
-use Tekkenking\Swissecho\Routes\Voice\Gateways\Termii\TermiiVoiceCall;
 use Tekkenking\Swissecho\Routes\Voice\Gateways\Textngxyz\TextngxyzVoiceCall;
 use Tekkenking\Swissecho\Routes\Whatsapp\Gateways\DirectWhatsapp\DirectWhatsapp;
 use Tekkenking\Swissecho\SwissechoMessage;
@@ -43,7 +42,6 @@ class ProviderResponseRulesTest extends TestCase
             // gateway, body, http, success, message_id, error_code, error_message
             'termii accepted' => [Termii::class, '{"code":"ok","balance":1047.57,"message_id":"3017544054459083819856413","message":"Successfully Sent","message_id_str":"3017544054459083819856413"}', 200, true, '3017544054459083819856413', null, null],
             'termii rejected' => [Termii::class, '{"message":"Invalid API key"}', 401, false, null, '401', 'Invalid API key'],
-            'termii voice accepted' => [TermiiVoiceCall::class, '{"code":"ok","message_id":"3017545719517588296261695","pinId":"3017545719517588296261695","message":"Successfully Sent"}', 200, true, '3017545719517588296261695', null, null],
 
             'nigeriabulksms accepted' => [Nigerianbulksms::class, '{"status":"OK","count":1,"price":8}', 200, true, null, null, null],
             'nigeriabulksms rejected inside a 200' => [Nigerianbulksms::class, '{"error":"Login denied.","errno":"103"}', 200, false, null, '103', 'Login denied.'],
@@ -58,8 +56,7 @@ class ProviderResponseRulesTest extends TestCase
             'smsbroadcast bad number inside a 200' => [SmsBroadCastDotComDotAu::class, 'BAD:0400abc111:Invalid Number', 200, false, null, null, 'Invalid Number'],
             'smsbroadcast bad login inside a 200' => [SmsBroadCastDotComDotAu::class, 'ERROR: Username or password is incorrect.', 200, false, null, null, 'Username or password is incorrect.'],
 
-            'tnz accepted, older shape' => [Tnz::class, '{"Result":"Success","MessageID":"AAAAAAAA-BBBB"}', 200, true, 'AAAAAAAA-BBBB', null, null],
-            'tnz accepted, v3 shape' => [Tnz::class, '{"MessageID":"1000000a-f002-4007-b00a-d00000000002"}', 200, true, '1000000a-f002-4007-b00a-d00000000002', null, null],
+            'tnz accepted' => [Tnz::class, '{"MessageID":"1000000a-f002-4007-b00a-d00000000002"}', 200, true, '1000000a-f002-4007-b00a-d00000000002', null, null],
             'tnz rejected with a list' => [Tnz::class, '{"Result":"Failed","ErrorMessage":["Missing or empty field"]}', 400, false, null, '400', 'Missing or empty field'],
             'tnz rejected with a string' => [Tnz::class, '{"Result":"Unauthorized","ErrorMessage":"Access denied"}', 401, false, null, '401', 'Access denied'],
 

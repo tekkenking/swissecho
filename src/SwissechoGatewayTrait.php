@@ -302,8 +302,8 @@ trait SwissechoGatewayTrait
      *
      * Applied here, after the gateway's send() has returned, so every
      * gateway is covered and these options win over anything it set. Five
-     * gateways disabled peer verification themselves, and none but the
-     * Termii voice gateway set a timeout at all, so one hung provider could
+     * gateways disabled peer verification themselves, and almost none set
+     * a timeout at all, so one hung provider could
      * block a PHP worker for as long as the socket stayed open.
      *
      * @param $ch

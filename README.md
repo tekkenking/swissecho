@@ -48,7 +48,7 @@ Switch `'sms'` to `'whatsapp'`, `'voice'`, `'slack'` or `'telegram'` and the res
 | Channel | Description | Supported Gateways |
 |---|---|---|
 | **SMS** | Traditional text messages | Termii, RouteMobile, SmsBroadcast (AU), TNZ (NZ), NigerianBulkSMS, Montnets, Wirepick, Twilio, Vonage |
-| **Voice** | Voice OTP / voice calls | Termii, Textng.xyz |
+| **Voice** | Voice OTP / voice calls | Textng.xyz |
 | **WhatsApp** | WhatsApp messaging | WhatsApp Cloud API (direct) |
 | **Slack** | Slack notifications | Incoming Webhook, Bot Token (`chat.postMessage`) |
 | **Telegram** | Telegram Bot messages | Telegram Bot API (`sendMessage`) |
@@ -75,6 +75,7 @@ Switch `'sms'` to `'whatsapp'`, `'voice'`, `'slack'` or `'telegram'` and the res
   - [The Default Gateway for a Route](#the-default-gateway-for-a-route)
 - [Recipients and Sender IDs](#recipients-and-sender-ids)
 - [Twilio and Vonage](#twilio-and-vonage)
+- [TNZ](#tnz)
 - [WhatsApp Gateways](#whatsapp-gateways)
 - [Transport, TLS and Timeouts](#transport-tls-and-timeouts)
 - [Usage](#usage)
@@ -123,7 +124,7 @@ SWISSECHO_FAKE=log             # Mock mode: "log" (writes to file) or "mail" (se
 SWISSECHO_FAKE_MAIL=           # Required when SWISSECHO_FAKE=mail. An address you own.
 SWISSECHO_ROUTE=sms            # Default route/channel: sms, voice, whatsapp, slack, telegram
 SWISSECHO_SMS_GATEWAY=termii        # Default gateway for the sms route
-SWISSECHO_VOICE_GATEWAY=termii      # Default gateway for the voice route
+SWISSECHO_VOICE_GATEWAY=textngxyz   # Default gateway for the voice route
 SWISSECHO_WHATSAPP_GATEWAY=directwhatsapp  # Default gateway for the whatsapp route
 SWISSECHO_DEFAULT_PLACE=nga    # Required unless every send sets ->place() or the notifiable has routeNotificationPlace()
 
@@ -133,7 +134,7 @@ SWISSECHO_TIMEOUT=30           # Seconds to wait for a response. 0 means wait fo
 SWISSECHO_CONNECT_TIMEOUT=10   # Seconds to wait for the connection itself
 SWISSECHO_REDACT_SECRETS=true  # Mask credentials in the AfterSend event payload
 
-# ── Termii (SMS & Voice) ──────────────────────────────────
+# ── Termii (SMS) ──────────────────────────────────────────
 TERMII_API_KEY=your_api_key
 TERMII_SENDER_ID=YourSender
 TERMII_URL=https://api.ng.termii.com/api/sms/send
@@ -151,8 +152,8 @@ SMSBRC_DOTCOM_DOT_AU_PASSWORD=your_password
 SMSBRC_DOTCOM_DOT_AU_URL=https://api.smsbroadcast.com.au/...
 
 # ── TNZ (New Zealand) ─────────────────────────────────────
-TNZ_API_KEY=your_api_key
-TNZ_URL=https://api.tnz.co.nz/...
+TNZ_AUTH_TOKEN=your_auth_token      # The JWT auth token from the TNZ dashboard (REST API v3.00)
+TNZ_URL=                            # Optional. Defaults to https://api.tnz.co.nz/api/v3.00/sms
 
 # ── NigerianBulkSMS ───────────────────────────────────────
 NIGERIANBULKSMS_USERNAME=your_username
@@ -237,7 +238,7 @@ Each route with more than one gateway has a default, set per route:
 
 ```dotenv
 SWISSECHO_SMS_GATEWAY=termii
-SWISSECHO_VOICE_GATEWAY=termii
+SWISSECHO_VOICE_GATEWAY=textngxyz
 SWISSECHO_WHATSAPP_GATEWAY=directwhatsapp
 ```
 
@@ -426,6 +427,22 @@ Vonage answers HTTP 200 whether or not it accepted the message, so `$result->suc
 
 ---
 
+## TNZ
+
+The `tnz` gateway on the `sms` route uses TNZ's **REST API v3.00**. Set the auth token from your TNZ dashboard:
+
+```dotenv
+TNZ_AUTH_TOKEN=your_auth_token
+```
+
+It is sent as `Authorization: Bearer {token}` to `https://api.tnz.co.nz/api/v3.00/sms`, with every recipient in one request.
+
+TNZ's sender field takes a phone number only. A sender that is a phone number is sent as `FromNumber`; a sender that is a name is left out, and TNZ applies your account's own.
+
+> **Changed in 1.3.0.** This gateway used to call the v2 API with Basic authentication. `TNZ_API_KEY` is still read, but its value must now be a v3 auth token, and a `TNZ_URL` that points at a v2 address must be removed or updated.
+
+---
+
 ## WhatsApp Gateways
 
 One gateway serves the `whatsapp` route: `directwhatsapp`, Meta's WhatsApp Cloud API. It is the route's default, so a WhatsApp send needs no `->gateway()` call.
@@ -499,7 +516,7 @@ If one provider has a genuinely broken certificate, turn it off while you chase 
 
 A `timeout` of `0` means cURL waits forever, so a hung provider holds a PHP worker open for as long as the socket stays up — sends run inline in the request unless the notification is queued.
 
-Two exceptions: Slack and Telegram substitute 30 and 10 seconds when the configured value is `0`, so they never wait forever. And the Termii voice gateway sets its own 30-second timeout, which a `0` here deliberately leaves in place.
+One exception: Slack and Telegram substitute 30 and 10 seconds when the configured value is `0`, so they never wait forever.
 
 ---
 
@@ -618,7 +635,7 @@ swissecho()->message('Server restarted 🔄')
 swissecho()->route('voice', function ($ms) {
     return $ms->to('2348012345678')
               ->content('Your OTP is 5 6 7 8');
-})->gateway('termii')->go();
+})->go();
 ```
 
 ---
@@ -811,7 +828,7 @@ A provider signals a rejection in its own way, and several do it inside an HTTP 
 |---|---|---|
 | `twilio` | HTTP 2xx | `sid` |
 | `vonage` | every `messages[].status` is `"0"` | `message-id` |
-| `termii` (SMS and voice) | HTTP 2xx | `message_id` |
+| `termii` | HTTP 2xx | `message_id` |
 | `nigerianbulksms` | no `error` in the body | none returned |
 | `routemobile` | every item starts `1701` | third field |
 | `smsbroadcast` | lines start `OK:`, not `BAD:` or `ERROR:` | third field |

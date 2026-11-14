@@ -22,11 +22,13 @@ All notable changes to this package are recorded here. Versions follow [Semantic
 - **A gateway that needs a sender refuses to send without one.** `termii`, `routemobile` and `smsbroadcast` now stop with a clear error when no sender is set anywhere, where they used to send an empty one and be rejected.
 - **`status` on the `AfterSend` event can now be false for an HTTP 200.** It agrees with `success`, which is read from the provider's reply.
 - **Laravel 11 is no longer supported.** It is out of security support, and Composer now refuses to install any 11.x release because each carries unpatched advisories. Applications on Laravel 11 stay on 1.2.0, which Composer selects for them automatically.
+- **The `tnz` gateway uses TNZ's REST API v3.00.** It sends `Authorization: Bearer` with the account's auth token to `https://api.tnz.co.nz/api/v3.00/sms`, where it used to call v2 with Basic authentication. Set `TNZ_AUTH_TOKEN`; `TNZ_API_KEY` is still read but must hold a v3 token, and a `TNZ_URL` pointing at v2 must be removed. A sender is sent as `FromNumber` only when it is a phone number.
 - The minimum PHP version is 8.2, which Laravel 12 requires.
 - Direct sends and notification sends now run through one preparation path, so a direct send given a notifiable gets an identifier as a notification does.
 
 ### Removed
 
+- **The Termii voice gateway.** Its endpoint only reads out a numeric code, not a message. `textngxyz` is now the `voice` route's default and the `nga` place's gateway. An app with `SWISSECHO_VOICE_GATEWAY=termii` must remove it or set `textngxyz`. Termii SMS is unchanged.
 - **The `kudisms` WhatsApp gateway.** KudiSMS changed its WhatsApp API and the gateway no longer matched it. `directwhatsapp` (the WhatsApp Cloud API) is now the `whatsapp` route's default, and the `nga` place no longer names a gateway. The `KUDISMS_*` variables are no longer read; an app with `SWISSECHO_WHATSAPP_GATEWAY=kudisms` must remove it or set `directwhatsapp`.
 
 ### Deprecated

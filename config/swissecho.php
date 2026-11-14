@@ -9,7 +9,6 @@ use Tekkenking\Swissecho\Routes\Sms\Gateways\Tnz\Tnz;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Twilio\Twilio;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Vonage\Vonage;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Wirepick\Wirepick;
-use Tekkenking\Swissecho\Routes\Voice\Gateways\Termii\TermiiVoiceCall;
 use Tekkenking\Swissecho\Routes\Voice\Gateways\Textngxyz\TextngxyzVoiceCall;
 use Tekkenking\Swissecho\Routes\Whatsapp\Gateways\DirectWhatsapp\DirectWhatsapp;
 
@@ -87,10 +86,14 @@ return [
                 ],
                 'tnz'  =>  [
                     'class' =>  Tnz::class,
+                    //REST API v3.00. The token is the JWT auth token from
+                    //the TNZ dashboard, sent as a Bearer token. TNZ_API_KEY
+                    //is still read so an existing .env keeps its name, but
+                    //its value must be a v3 token.
                     'auth'  =>  [
-                        'api_key'   =>  env('TNZ_API_KEY')
+                        'token'   =>  env('TNZ_AUTH_TOKEN', env('TNZ_API_KEY'))
                     ],
-                    'url'   =>  env('TNZ_URL')
+                    'url'   =>  env('TNZ_URL', 'https://api.tnz.co.nz/api/v3.00/sms')
                 ],
                 'nigerianbulksms'   =>  [
                     'class' =>  Nigerianbulksms::class,
@@ -192,17 +195,9 @@ return [
         ],
 
         'voice'  =>  [
-            'gateway'           =>  env('SWISSECHO_VOICE_GATEWAY', 'termii'),
+            'gateway'           =>  env('SWISSECHO_VOICE_GATEWAY', 'textngxyz'),
             'default_place'     =>  env('SWISSECHO_DEFAULT_PLACE', null),
             'gateway_options'   =>  [
-
-                'termii'        =>  [
-                    'class'     =>  TermiiVoiceCall::class,
-                    'auth'      =>  [
-                        'api_key'   =>  env('TERMII_API_KEY')
-                    ],
-                    'url'       =>  'https://api.ng.termii.com/api/sms/otp/call'
-                ],
                 'textngxyz'     =>  [
                     'class'     =>  TextngxyzVoiceCall::class,
                     'auth'      =>  [
@@ -214,7 +209,7 @@ return [
             ],
             'places'  =>  [
                 'nga'   =>  [
-                    'gateway'   => 'termii',
+                    'gateway'   => 'textngxyz',
                     'phonecode' =>  '234'
                 ]
             ]

@@ -3,64 +3,107 @@
 namespace Tekkenking\Swissecho\Routes\Sms\Gateways\Tnz;
 
 use Tekkenking\Swissecho\Routes\Sms\Gateways\BaseGateway;
+use Tekkenking\Swissecho\SwissechoException;
 
+/**
+ * TNZ REST API v3.00.
+ * https://www.tnz.co.nz/docs/restapi/
+ */
 class Tnz extends BaseGateway
 {
-    private $authToken;
-
-    private $url;
+    public const DEFAULT_URL = 'https://api.tnz.co.nz/api/v3.00/sms';
 
     /**
-     * @inheritDoc
+     * One request carries every recipient, as a Destinations list.
+     *
+     * @return array
      */
-    public function init(): mixed
+    public function init(): array
     {
-        $this->url          = $this->config['url'];
-        $this->authToken    = $this->config['auth']['api_key'];
+        $data = [
+            'Message'      => $this->body,
+            'Destinations' => array_map(
+                fn ($number) => ['ToNumber' => $this->international((string) $number)],
+                (array) $this->to
+            ),
+        ];
 
-        $recipientsArr = [];
-        foreach ($this->to as $num) {
-            $recipientsArr[] = ["Recipient" => $num];
+        $from = $this->fromNumber();
+
+        if($from !== null) {
+            $data['FromNumber'] = $from;
         }
 
-        $data = [
-            "MessageData" => [
-                "Message" => $this->body,
-                "sender"    =>  $this->sender,
-                "Destinations" => $recipientsArr,
-            ]
-        ];
-
-        return json_encode($data);
+        return $data;
     }
 
-    public function send($data)
+    /**
+     * @param array $data
+     * @return \CurlHandle
+     * @throws SwissechoException
+     */
+    public function send($data): \CurlHandle
     {
-        $headers = [
-            "Content-Type: application/json",
-            "Accept: application/json",
-            "encoding='utf-8'",
-            "Content-length: ".strlen($data),
-            "Authorization: Basic {$this->authToken}",
-            "Connection: close"
-        ];
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $this->url);
+        $ch = curl_init($this->config['url'] ?? null ?: self::DEFAULT_URL);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers());
 
         return $ch;
     }
 
     /**
-     * Only the markers that hold across TNZ's API versions: a Result of
-     * Failed or Unauthorized is a rejection with its ErrorMessage, which
-     * may be a string or a list, and MessageID identifies an accepted
-     * message. Anything else is judged by HTTP status.
-     * https://www.tnz.co.nz/docs/restapi/
+     * v3 authenticates with the account's JWT auth token as a Bearer token.
+     * v2 took it as Basic, which v3 answers with 401.
+     *
+     * @return array<int, string>
+     * @throws SwissechoException
+     */
+    protected function headers(): array
+    {
+        $token = $this->config['auth']['token'] ?? $this->config['auth']['api_key'] ?? null;
+
+        if(empty($token)) {
+            throw new SwissechoException('Sms: set TNZ_AUTH_TOKEN for the tnz gateway.');
+        }
+
+        return [
+            'Content-Type: application/json; charset=utf-8',
+            'Accept: application/json',
+            'Authorization: Bearer '.$token,
+        ];
+    }
+
+    /**
+     * TNZ reads a number without a plus as a local one, so a number that
+     * already carries its country code is marked as international.
+     *
+     * @param string $number
+     * @return string
+     */
+    protected function international(string $number): string
+    {
+        return ctype_digit($number) ? '+'.$number : $number;
+    }
+
+    /**
+     * FromNumber is a phone number in E.164 without the plus, so a sender
+     * that is a name is left out and TNZ applies the account's own.
+     *
+     * @return string|null
+     */
+    protected function fromNumber(): ?string
+    {
+        $digits = ltrim($this->sender, '+');
+
+        return $digits !== '' && ctype_digit($digits) ? $digits : null;
+    }
+
+    /**
+     * An accepted send is HTTP 200 with a MessageID. A rejection carries a
+     * Result of Failed or Unauthorized and an ErrorMessage, which the
+     * specification types as a list and shows as a string.
      */
     protected function interpretResponse(mixed $body, int $httpCode): array
     {
