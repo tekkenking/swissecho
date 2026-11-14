@@ -16,7 +16,7 @@ trait SwissechoGatewayTrait
     /**
      * @var string|mixed
      */
-    public string $sender;
+    public string $sender = '';
 
     /**
      * @var string
