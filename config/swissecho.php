@@ -18,6 +18,11 @@ return [
 
     'live'      =>  env('SWISSECHO_ENABLED', false),
     'sender'    =>  env('SWISSECHO_SENDER'),
+    //Mask gateway credentials in the AfterSend event payload. Turn this off
+    //only if you need the raw outbound request for debugging, and make sure
+    //nothing logs or queues the event while it is off.
+    'redact_secrets' => env('SWISSECHO_REDACT_SECRETS', true),
+
     'fake'      =>  env('SWISSECHO_FAKE', 'log'), //mail
     'fake_mail'      =>  env('SWISSECHO_FAKE_MAIL', 'admin@example.com'),
     'route'     =>  env('SWISSECHO_ROUTE', 'sms'),
