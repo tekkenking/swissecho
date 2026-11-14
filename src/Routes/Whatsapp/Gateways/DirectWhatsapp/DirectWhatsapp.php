@@ -148,4 +148,33 @@ class DirectWhatsapp extends BaseGateway
             ],
         ];
     }
+
+    /**
+     * The Cloud API answers a rejection with an `error` object - Meta says
+     * to build on error.code rather than the HTTP status - and an accepted
+     * message with its id in messages[0].id. Accepted is not delivered.
+     * https://developers.facebook.com/documentation/business-messaging/whatsapp/support/error-codes
+     */
+    protected function interpretResponse(mixed $body, int $httpCode): array
+    {
+        $verdict = parent::interpretResponse($body, $httpCode);
+        $data = $this->decodeJson($body);
+
+        if($data === null) {
+            return $verdict;
+        }
+
+        if(is_array($data['error'] ?? null)) {
+            $error = $data['error'];
+            $detail = $error['error_data']['details'] ?? null;
+
+            return [
+                'success'       => false,
+                'error_code'    => isset($error['code']) ? (string) $error['code'] : ($verdict['error_code'] ?? null),
+                'error_message' => trim(($error['message'] ?? 'WhatsApp rejected the message').($detail ? ' '.$detail : '')),
+            ];
+        }
+
+        return $verdict + ['message_id' => $data['messages'][0]['id'] ?? null];
+    }
 }

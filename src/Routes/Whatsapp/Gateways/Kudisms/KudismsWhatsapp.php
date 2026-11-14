@@ -73,5 +73,30 @@ class KudismsWhatsapp extends BaseGateway
         return $curl;
     }
 
+    /**
+     * KudiSMS puts an error_code in every JSON reply: "000" is accepted,
+     * with "recipient|message-id" in `data`, and anything else is a
+     * rejection explained in `msg`. Used only when that field is present.
+     * https://kudisms.net/docs/errors/
+     */
+    protected function interpretResponse(mixed $body, int $httpCode): array
+    {
+        $data = $this->decodeJson($body);
 
+        if($data === null || !isset($data['error_code'])) {
+            return parent::interpretResponse($body, $httpCode);
+        }
+
+        if((string) $data['error_code'] !== '000') {
+            return [
+                'success'       => false,
+                'error_code'    => (string) $data['error_code'],
+                'error_message' => isset($data['msg']) ? (string) $data['msg'] : 'KudiSMS rejected the message',
+            ];
+        }
+
+        $parts = is_string($data['data'] ?? null) ? explode('|', $data['data']) : [];
+
+        return ['success' => true, 'message_id' => $parts[1] ?? null];
+    }
 }

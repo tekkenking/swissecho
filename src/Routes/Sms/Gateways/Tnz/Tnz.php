@@ -54,4 +54,33 @@ class Tnz extends BaseGateway
 
         return $ch;
     }
+
+    /**
+     * Only the markers that hold across TNZ's API versions: a Result of
+     * Failed or Unauthorized is a rejection with its ErrorMessage, which
+     * may be a string or a list, and MessageID identifies an accepted
+     * message. Anything else is judged by HTTP status.
+     * https://www.tnz.co.nz/docs/restapi/
+     */
+    protected function interpretResponse(mixed $body, int $httpCode): array
+    {
+        $verdict = parent::interpretResponse($body, $httpCode);
+        $data = $this->decodeJson($body);
+
+        if($data === null) {
+            return $verdict;
+        }
+
+        if(in_array($data['Result'] ?? null, ['Failed', 'Unauthorized'], true)) {
+            $reason = $data['ErrorMessage'] ?? $data['Result'];
+
+            return [
+                'success'       => false,
+                'error_code'    => $verdict['error_code'] ?? null,
+                'error_message' => is_array($reason) ? implode('; ', $reason) : (string) $reason,
+            ];
+        }
+
+        return $verdict + ['message_id' => $data['MessageID'] ?? null];
+    }
 }

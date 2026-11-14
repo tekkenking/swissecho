@@ -6,6 +6,7 @@ namespace Tekkenking\Swissecho\Routes;
 
 use Illuminate\Notifications\Notification;
 use Tekkenking\Swissecho\SwissechoException;
+use Tekkenking\Swissecho\SendResult;
 use Tekkenking\Swissecho\SwissechoMessage;
 
 abstract class BaseRoute
@@ -29,6 +30,11 @@ abstract class BaseRoute
      * @var mixed
      */
     protected SwissechoMessage $msgBuilder;
+
+    /**
+     * What the gateway reported for the send just made.
+     */
+    protected ?SendResult $lastResult = null;
 
     /**
      * @var array
@@ -236,18 +242,28 @@ abstract class BaseRoute
      * @param Notification $notification
      * @return void
      */
-    public function bootByNotification($notifiable, Notification $notification): void
+    public function bootByNotification($notifiable, Notification $notification): ?SendResult
     {
         $this->notifiable = $notifiable;
         $this->notification = $notification;
         $this->sendViaNotification();
+
+        return $this->lastResult;
+    }
+
+    /**
+     * The outcome of the send this route just made.
+     */
+    public function result(): ?SendResult
+    {
+        return $this->lastResult;
     }
 
     /**
      * @param $routeBuilder
      * @return void
      */
-    public function bootByDirect($routeBuilder, $notifiable = null): void
+    public function bootByDirect($routeBuilder, $notifiable = null): ?SendResult
     {
         $this->loadConfig();
 
@@ -258,6 +274,8 @@ abstract class BaseRoute
             $this->gateway($routeBuilder->gateway);
         }
         $this->directSend($routeBuilder);
+
+        return $this->lastResult;
     }
 
     public function setIdentifier(): void
@@ -409,7 +427,12 @@ abstract class BaseRoute
         $gatewayConfig = $this->gatewayConfig();
         $gatewayClass = $gatewayConfig['class'];
 
-        (new $gatewayClass($gatewayConfig, $this->msgBuilder))->boot();
+        $gateway = new $gatewayClass($gatewayConfig, $this->msgBuilder);
+        $gateway->boot();
+
+        //A gateway written without SwissechoGatewayTrait has no result to
+        //give, so go() returns null for it rather than failing.
+        $this->lastResult = method_exists($gateway, 'result') ? $gateway->result() : null;
     }
 
     protected function prepareTo(): mixed

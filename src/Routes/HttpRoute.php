@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tekkenking\Swissecho\Routes;
 
 use Tekkenking\Swissecho\Events\AfterSend;
+use Tekkenking\Swissecho\SendResult;
 use Tekkenking\Swissecho\SwissechoMock;
 
 /**
@@ -32,6 +33,14 @@ trait HttpRoute
     protected bool $reportsRequestedRecipient = true;
 
     /**
+     * The provider's reply exactly as received, for SendResult::$providerRes.
+     * Null in mock mode and when the request never got an answer.
+     *
+     * @var mixed
+     */
+    protected mixed $rawResponse = null;
+
+    /**
      * Perform a JSON POST request via cURL.
      *
      * @param  string  $url
@@ -55,11 +64,13 @@ trait HttpRoute
         $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
+        $this->rawResponse = $output === false ? null : $output;
+
         if ($errno) {
             return ['error' => true, 'message' => $error, 'http_code' => $httpCode];
         }
 
-        return $this->interpretResponse((string) $output, $httpCode);
+        return $this->buildEnvelope((string) $output, $httpCode);
     }
 
     /**
@@ -88,7 +99,7 @@ trait HttpRoute
      * @param  int  $httpCode
      * @return array
      */
-    protected function interpretResponse(string $output, int $httpCode): array
+    protected function buildEnvelope(string $output, int $httpCode): array
     {
         //is_array, not ??: a scalar JSON body such as 404 or "ok" decodes to
         //an int or a string, which would be returned from a method declared
@@ -141,6 +152,8 @@ trait HttpRoute
         //never left the process.
         $to = $this->reportsRequestedRecipient ? $this->msgBuilder->to : null;
 
+        $this->lastResult = $this->buildResult($gatewayResponse, $status, $mocked, $to);
+
         $formattedResponse = [
             'status'           => $status,
             'partner_response' => $gatewayResponse,
@@ -154,13 +167,86 @@ trait HttpRoute
             'gateway'          => $this->msgBuilder->gateway,
             'identifier'       => $this->msgBuilder->identifier ?? null,
             'timestamp'        => now()->toDateTimeString(),
+            //The same keys every gateway-backed route reports.
+            'success'          => $this->lastResult->success,
+            'message_id'       => $this->lastResult->messageId,
+            'error_code'       => $this->lastResult->errorCode,
+            'error_message'    => $this->lastResult->errorMessage,
+            'provider_res'     => $this->lastResult->providerRes,
+            'mocked'           => $this->lastResult->mocked,
         ];
 
         AfterSend::dispatch(
             ['request' => $this->requestPayload, 'response' => $gatewayResponse],
             $formattedResponse,
-            $this->msgBuilder->identifier ?? null
+            $this->msgBuilder->identifier ?? null,
+            $this->lastResult
         );
+    }
+
+    /**
+     * The send's outcome in the shape every route reports.
+     *
+     * @param  array  $gatewayResponse
+     * @param  bool   $status
+     * @param  bool   $mocked
+     * @param  mixed  $to
+     * @return SendResult
+     */
+    protected function buildResult(array $gatewayResponse, bool $status, bool $mocked, mixed $to): SendResult
+    {
+        [$errorCode, $errorMessage] = $status ? [null, null] : $this->errorFrom($gatewayResponse);
+
+        return new SendResult(
+            success: $status,
+            messageId: $status && !$mocked ? $this->messageIdFrom($gatewayResponse) : null,
+            errorCode: $errorCode,
+            errorMessage: $errorMessage,
+            providerRes: $mocked ? null : $this->rawResponse,
+            to: $to,
+            route: $this->msgBuilder->route,
+            gateway: $this->msgBuilder->gateway,
+            mocked: $mocked,
+        );
+    }
+
+    /**
+     * Slack identifies a message by its `ts`, Telegram by `result.message_id`.
+     * An incoming webhook returns no identifier at all.
+     *
+     * @param  array  $response
+     * @return string|null
+     */
+    protected function messageIdFrom(array $response): ?string
+    {
+        $id = $response['ts'] ?? ($response['result']['message_id'] ?? null);
+
+        return $id === null ? null : (string) $id;
+    }
+
+    /**
+     * The provider's own reason for a failure, where it gave one.
+     *
+     * Slack's API puts a machine code in `error`; Telegram gives
+     * `error_code` and `description`; a Slack webhook answers in plain text.
+     * The envelope's own `error` key is a boolean, so only strings count.
+     *
+     * @param  array  $response
+     * @return array{0: string|null, 1: string|null}
+     */
+    protected function errorFrom(array $response): array
+    {
+        $body = is_array($response['response'] ?? null) ? $response['response'] : $response;
+        $slackError = is_string($body['error'] ?? null) ? $body['error'] : null;
+        $plainText = is_string($body['raw'] ?? null) && $body['raw'] !== '' ? $body['raw'] : null;
+
+        $code = $body['error_code'] ?? $slackError ?? ($response['http_code'] ?? null);
+        $message = $body['description'] ?? $slackError ?? $plainText ?? ($response['message'] ?? null);
+
+        return [
+            $code === null ? null : (string) $code,
+            $message === null ? null : (string) $message,
+        ];
     }
 
     /**
