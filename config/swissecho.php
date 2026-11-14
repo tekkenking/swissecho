@@ -44,6 +44,16 @@ return [
                 'termii'        =>  [
                     'class'     =>  Termii::class,
                     'sender'    =>  env('TERMII_SENDER_ID'),
+
+                    //The provider rejects a message with no sender, so a
+                    //send with none configured anywhere stops with a clear
+                    //error instead of going out with an empty one.
+                    'requires_sender' => true,
+
+                    //Optional, on any gateway: refuse a sender longer than
+                    //this rather than letting the provider reject it. GSM
+                    //allows 11 characters for an alphanumeric sender.
+                    //'sender_max_length' => 11,
                     'channel'   =>  'dnd',
                     'url'       =>  env('TERMII_URL'),
                     'auth'      =>  [
@@ -58,6 +68,7 @@ return [
                 'routemobile'   =>  [
                     'class'     =>  RouteMobile::class,
                     'sender'    =>  env('ROUTEMOBILE_SENDER_ID'),
+                    'requires_sender' => true,
                     'url'       =>  env('ROUTEMOBILE_URL'),
                     'auth'      =>  [
                         'username'  =>  env('ROUTEMOBILE_USERNAME'),
@@ -66,6 +77,7 @@ return [
                 ],
                 'smsbroadcast'  =>  [
                     'class' =>  SmsBroadCastDotComDotAu::class,
+                    'requires_sender' => true,
                     'auth'  =>  [
                         'username'  =>  env('SMSBRC_DOTCOM_DOT_AU_USERNAME'),
                         'password'  =>  env('SMSBRC_DOTCOM_DOT_AU_PASSWORD'),

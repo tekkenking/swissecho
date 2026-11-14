@@ -21,6 +21,10 @@ class GatewayFromPlaceTest extends TestCase
         $app['config']->set('swissecho.live', false);
         $app['config']->set('swissecho.fake', 'log');
         $app['config']->set('app.env', 'local');
+
+        //A default sender, as any real install has. Gateways that need one
+        //refuse to send without it.
+        $app['config']->set('swissecho.sender', 'MyApp');
     }
 
     private function notifiable(): object

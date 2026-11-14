@@ -395,37 +395,15 @@ abstract class BaseRoute
 
     protected function pushToGateway()
     {
-        if(!$this->msgBuilder->to) {
-            throw new SwissechoException('Notification: Invalid phone number');
-        }
+        $this->assertSendable();
 
-        //Validated here with the recipient, because the gateway constructors
-        //assign the body straight to a non-nullable string property: a
-        //message with no body gave 'Undefined array key "message"' and then
-        //a TypeError, which is an Error and so escapes catch(Exception).
-        //Slack and Telegram already raise a clear exception for this.
-        if(trim((string) ($this->msgBuilder->message ?? '')) === '') {
-            throw new SwissechoException('Notification: a message body is required. Set one with ->content() or ->line().');
-        }
-
-        $phonecode = $this->placeConfig['phonecode'] ?? null;
-
-        //setGatewayFromPlace() validates the place's gateway key; this one
-        //was read blind. A place configured with a gateway but no phonecode
-        //gave an undefined-key warning and then stripped the leading 0
-        //without prepending anything, so the provider received a national
-        //number and the message went nowhere.
-        if(empty($phonecode)) {
-            throw new SwissechoException(
-                'Notification: the place "'.$this->place.'" on the '.$this->route.' route has no phonecode configured.'
-            );
-        }
-
-        $this->msgBuilder->phonecode($phonecode);
+        $this->msgBuilder->phonecode($this->placeConfig['phonecode']);
 
         $this->msgBuilder->to($this->addPhoneCodeToPhoneNumberArr($this->convertPhoneNumberToArray($this->msgBuilder->to), $this->msgBuilder->phonecode));
         $gatewayConfig = $this->gatewayConfig();
         $gatewayClass = $gatewayConfig['class'];
+
+        $this->assertSenderIsUsable($gatewayConfig);
 
         $gateway = new $gatewayClass($gatewayConfig, $this->msgBuilder);
         $gateway->boot();
@@ -433,6 +411,66 @@ abstract class BaseRoute
         //A gateway written without SwissechoGatewayTrait has no result to
         //give, so go() returns null for it rather than failing.
         $this->lastResult = method_exists($gateway, 'result') ? $gateway->result() : null;
+    }
+
+    /**
+     * A send needs a recipient, a body and a dialling code. Each is checked
+     * here with a message saying what to set, because the alternatives were
+     * worse: a missing body was a TypeError that escapes catch(Exception),
+     * and a place with no phonecode sent a national number that went
+     * nowhere.
+     *
+     * @return void
+     * @throws SwissechoException
+     */
+    protected function assertSendable(): void
+    {
+        if(!$this->msgBuilder->to) {
+            throw new SwissechoException('Notification: Invalid phone number');
+        }
+
+        if(trim((string) ($this->msgBuilder->message ?? '')) === '') {
+            throw new SwissechoException('Notification: a message body is required. Set one with ->content() or ->line().');
+        }
+
+        if(empty($this->placeConfig['phonecode'])) {
+            throw new SwissechoException(
+                'Notification: the place "'.$this->place.'" on the '.$this->route.' route has no phonecode configured.'
+            );
+        }
+    }
+
+    /**
+     * Enforce what the gateway's config says about senders.
+     *
+     * requires_sender: the provider rejects a message with none, so say so
+     * here instead of sending an empty one. sender_max_length: refuse a
+     * sender that is too long rather than shortening it to something the
+     * caller did not choose. Neither applies unless the gateway sets it.
+     *
+     * @param array $gatewayConfig
+     * @return void
+     * @throws SwissechoException
+     */
+    protected function assertSenderIsUsable(array $gatewayConfig): void
+    {
+        $sender = (string) ($this->msgBuilder->sender ?? '');
+
+        if(($gatewayConfig['requires_sender'] ?? false) && $sender === '') {
+            throw new SwissechoException(
+                'Notification: the '.$this->getGateway().' gateway needs a sender ID and none is set. '
+                . 'Set SWISSECHO_SENDER, a sender on the gateway in config, or ->sender() on the message.'
+            );
+        }
+
+        $max = (int) ($gatewayConfig['sender_max_length'] ?? 0);
+
+        if($max > 0 && mb_strlen($sender) > $max) {
+            throw new SwissechoException(
+                'Notification: the sender "'.$sender.'" is '.mb_strlen($sender).' characters and the '
+                . $this->getGateway().' gateway allows '.$max.'.'
+            );
+        }
     }
 
     protected function prepareTo(): mixed

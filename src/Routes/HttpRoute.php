@@ -154,8 +154,25 @@ trait HttpRoute
 
         $this->lastResult = $this->buildResult($gatewayResponse, $status, $mocked, $to);
 
-        $formattedResponse = [
-            'status'           => $status,
+        AfterSend::dispatch(
+            ['request' => $this->requestPayload, 'response' => $gatewayResponse],
+            $this->formatHttpResponse($gatewayResponse, $to),
+            $this->msgBuilder->identifier ?? null,
+            $this->lastResult
+        );
+    }
+
+    /**
+     * The formattedResponse array for the AfterSend event.
+     *
+     * @param  array  $gatewayResponse
+     * @param  mixed  $to
+     * @return array
+     */
+    protected function formatHttpResponse(array $gatewayResponse, mixed $to): array
+    {
+        return [
+            'status'           => $this->lastResult->success,
             'partner_response' => $gatewayResponse,
             //Always null: neither Slack nor Telegram has a sender field in
             //its payload, so ->from() is accepted and never sent. Reporting
@@ -175,13 +192,6 @@ trait HttpRoute
             'provider_res'     => $this->lastResult->providerRes,
             'mocked'           => $this->lastResult->mocked,
         ];
-
-        AfterSend::dispatch(
-            ['request' => $this->requestPayload, 'response' => $gatewayResponse],
-            $formattedResponse,
-            $this->msgBuilder->identifier ?? null,
-            $this->lastResult
-        );
     }
 
     /**

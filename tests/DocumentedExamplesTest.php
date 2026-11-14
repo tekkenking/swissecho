@@ -28,6 +28,10 @@ class DocumentedExamplesTest extends TestCase
         $app['config']->set('swissecho.fake', 'log');
         $app['config']->set('app.env', 'local');
 
+        //A default sender, as any real install has. Gateways that need one
+        //refuse to send without it.
+        $app['config']->set('swissecho.sender', 'MyApp');
+
         //Exactly what the quick start now tells you to set, and nothing more.
         $app['config']->set('swissecho.routes_options.sms.default_place', 'nga');
     }
