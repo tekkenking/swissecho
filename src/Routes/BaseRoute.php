@@ -315,6 +315,16 @@ abstract class BaseRoute
     {
         $this->msgBuilder = $viaMethod;
         $this->msgBuilder->to($this->prepareTo());
+
+        //A gateway named on the message is an explicit choice, exactly as
+        //bootByDirect() treats it on the direct path. Without this the
+        //README's documented way of selecting a gateway from inside a
+        //notification was read by nothing, and the place's gateway won
+        //silently - so a custom gateway was never actually used.
+        if($this->msgBuilder->gateway !== null) {
+            $this->gateway($this->msgBuilder->gateway);
+        }
+
         $this->setPlace();
         $this->setPlaceConfig();
         $this->setGatewayFromPlace();

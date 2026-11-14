@@ -19,7 +19,7 @@ class Swissecho
     /**
      * @var Notification
      */
-    private Notification $notification;
+    private ?Notification $notification = null;
 
     /**
      * @var array|string[]
@@ -66,7 +66,16 @@ class Swissecho
             ? $notification->swissechoRoutes($notifiable)
             : self::DEFAULT_VIAS;
         
-        $this->makeRoutes();
+        try {
+            $this->makeRoutes();
+        } finally {
+            //Cleared here rather than in go(): makeRoutes() reads
+            //$this->notification once per via, so go() must not take it away
+            //mid-loop. Leaving it set let a later bare go() re-send the whole
+            //notification, a second billed message with no new instruction.
+            $this->notifiable = null;
+            $this->notification = null;
+        }
     }
 
     /**
@@ -200,6 +209,11 @@ class Swissecho
         $this->message = null;
         $this->isCallBack = false;
         $this->echoBuilderMessage = null;
+
+        //Without this, makeNotifiable() survived the send that used it, and
+        //go() prefers $directNotifiable over the notifiable passed to a later
+        //send() - so the next person's message went to the previous person.
+        $this->directNotifiable = null;
 
         //$initRoute is deliberately left in place: it is the artifact of the
         //send just made, which tests and debugging read, and resetting $route
