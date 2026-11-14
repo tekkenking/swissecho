@@ -71,11 +71,6 @@ trait SwissechoGatewayTrait
         return $this;
     }
 
-    public function coldBoot(): self
-    {
-        return $this;
-    }
-
     /**
      * @return array
      */

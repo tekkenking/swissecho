@@ -1,6 +1,5 @@
 <?php
 
-use Tekkenking\Swissecho\Routes\Slack\SlackRoute;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Montnets\Montnets;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Nigerianbulksms\Nigerianbulksms;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Routemobile\RouteMobile;
@@ -8,7 +7,6 @@ use Tekkenking\Swissecho\Routes\Sms\Gateways\Smsbroadcast\SmsBroadCastDotComDotA
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Termii\Termii;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Tnz\Tnz;
 use Tekkenking\Swissecho\Routes\Sms\Gateways\Wirepick\Wirepick;
-use Tekkenking\Swissecho\Routes\Telegram\TelegramRoute;
 use Tekkenking\Swissecho\Routes\Voice\Gateways\Termii\TermiiVoiceCall;
 use Tekkenking\Swissecho\Routes\Voice\Gateways\Textngxyz\TextngxyzVoiceCall;
 use Tekkenking\Swissecho\Routes\Whatsapp\Gateways\DirectWhatsapp\DirectWhatsapp;
@@ -137,7 +135,6 @@ return [
         ],
 
         'slack' => [
-            'class'           => SlackRoute::class,
             'auth'            => [
                 'webhook' => env('SLACK_WEBHOOK_URL'),
                 'token'   => env('SLACK_BOT_TOKEN'),
@@ -147,7 +144,6 @@ return [
         ],
 
         'telegram' => [
-            'class'           => TelegramRoute::class,
             'auth'            => [
                 'token' => env('TELEGRAM_BOT_TOKEN'),
             ],
