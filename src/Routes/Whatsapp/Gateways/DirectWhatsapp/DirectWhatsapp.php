@@ -17,47 +17,6 @@ use Tekkenking\Swissecho\SwissechoException;
 class DirectWhatsapp extends BaseGateway
 {
     /**
-     * The recipient the current request is for.
-     *
-     * @var string|null
-     */
-    protected ?string $currentRecipient = null;
-
-    /**
-     * One request per recipient.
-     *
-     * @return self
-     * @throws SwissechoException
-     */
-    public function boot(): self
-    {
-        $this->swissecho_config = config('swissecho');
-        $this->processDependencies();
-
-        //Captured before the loop, because the loop replaces $this->to
-        //with the recipient of each individual request.
-        $recipients = $this->recipients();
-
-        if($recipients === []) {
-            throw new SwissechoException('Whatsapp: no recipient to send to.');
-        }
-
-        foreach ($recipients as $recipient) {
-            $this->currentRecipient = $recipient;
-
-            //So the AfterSend event for each request names the number that
-            //request actually went to, rather than the whole list.
-            $this->to = $recipient;
-
-            $this->requestPayload = $this->init();
-            $ch = $this->send($this->requestPayload);
-            $this->execCurl($ch ?? null);
-        }
-
-        return $this;
-    }
-
-    /**
      * The message body for one recipient.
      *
      * @return array
@@ -188,36 +147,5 @@ class DirectWhatsapp extends BaseGateway
                 ],
             ],
         ];
-    }
-
-    /**
-     * Every recipient, trimmed, with blanks dropped.
-     *
-     * @return array
-     */
-    protected function recipients(): array
-    {
-        //Read from $this->to, not $this->payload: the trait declares
-        //$payload private, so it belongs to BaseGateway and is not
-        //accessible from a subclass.
-        $list = is_array($this->to) ? $this->to : [$this->to];
-
-        $clean = [];
-
-        foreach ($list as $entry) {
-            //A comma-separated string is a documented input to to(), and
-            //BaseRoute::pushToGateway() normally splits it before we get
-            //here. Split again so the gateway is also correct when it is
-            //constructed directly.
-            foreach (explode(',', (string) $entry) as $number) {
-                $number = trim($number);
-
-                if($number !== '') {
-                    $clean[] = $number;
-                }
-            }
-        }
-
-        return $clean;
     }
 }

@@ -219,6 +219,11 @@ return [
                     'class' =>  KudismsWhatsapp::class,
                     //'sender' =>  env('KUDISMS_WHATSAPP_SENDER_ID'),
                     'url'    =>  env('KUDISMS_URL'),
+
+                    //The template code registered on your Kudisms account.
+                    //There is no sensible default: Kudisms rejects a send
+                    //whose template it does not recognise.
+                    'template_code' =>  env('KUDISMS_TEMPLATE_CODE'),
                     'auth'  =>  [
                         'api_key'   =>  env('KUDISMS_API_KEY')
                     ]
