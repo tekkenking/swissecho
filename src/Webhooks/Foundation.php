@@ -6,67 +6,107 @@ namespace Tekkenking\Swissecho\Webhooks;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Tekkenking\Swissecho\Events\WebhookReceived;
 
 class Foundation {
 
     protected mixed $config;
 
     /**
-     * Summary of a handle
-     * @param string $type
-     * @param string $key
+     * Receive a provider callback.
+     *
+     * Route parameters are read by name rather than taken as method
+     * arguments: the route declares three of them and Laravel binds
+     * non-class arguments positionally, so a signature of
+     * (string $type, string $key, Request $request) received the gateway
+     * name as $key and discarded the secret entirely.
+     *
      * @param Request $request
      * @return JsonResponse
      */
-    public function handle(string $type, string $key, Request $request): JsonResponse
+    public function handle(Request $request): JsonResponse
     {
+        $route   = (string) $request->route('route');
+        $gateway = (string) $request->route('class');
+        $secret  = (string) $request->route('secret');
 
-        //First loaded the config
-        $this->config = $this->loadConfig();
+        $webhook = $this->webhookConfig($route, $gateway);
 
-        //Select the route option and the route itself
-        $routes_options = $this->config['routes_options'];
-        if(!isset($routes_options[$type])) {
-            return response()->json(['message'  => 'not found'],404);
-        }
-        $route = $routes_options[$type];
-
-        //Check if the route has webhook setup
-        if(!isset($route['webhook'])) {
-            return response()->json(['message'  => 'no webhook setup'],404);
+        if($webhook === null) {
+            return response()->json(['message' => 'no webhook setup'], 404);
         }
 
+        $configuredSecret = $webhook['secret'] ?? null;
 
-        $routeWebhookSecret = $route['webhook']['secret'] ?? null;
-
-        if (empty($routeWebhookSecret)) {
+        if (empty($configuredSecret)) {
             return response()->json(['message' => 'webhook not configured'], 401);
         }
 
-        $routeWehookClass = $route['class'];
-        $routeWebhookHandle = $route['webhook']['handle'];
-
-        //Validate the secret key from the webhook url
-        if(!$this->validateSecret($key, $routeWebhookSecret)) {
-            //Invalid key;
-            return response()->json(['message'=> 'invalid key'], 401);
+        if(!$this->validateSecret($secret, $configuredSecret)) {
+            return response()->json(['message' => 'invalid key'], 401);
         }
 
-        //initiate the webhook class and method of the route class
-        $this->callEventHook($routeWehookClass, $routeWebhookHandle, $request);
+        $this->dispatchCallback($route, $gateway, $webhook, $request);
 
-        return response()->json(['message'=> 'Webhook successful']);
-
+        return response()->json(['message' => 'Webhook successful']);
     }
 
-    private function validateSecret(string $key, ?string $routeWebhookSecret): bool
+    /**
+     * Read the webhook block for one gateway.
+     *
+     * The block lives at routes_options.{route}.gateway_options.{gateway}.webhook,
+     * which is where the config defines it and what the README documents. The
+     * previous lookup read routes_options.{route}.webhook, a key that does not
+     * exist, so every callback was answered with a 404.
+     *
+     * @param string $route
+     * @param string $gateway
+     * @return array|null
+     */
+    protected function webhookConfig(string $route, string $gateway): ?array
     {
-        return $routeWebhookSecret !== null && hash_equals($routeWebhookSecret, $key);
+        $this->config = $this->loadConfig();
+
+        $webhook = $this->config['routes_options'][$route]['gateway_options'][$gateway]['webhook'] ?? null;
+
+        return is_array($webhook) ? $webhook : null;
+    }
+
+    /**
+     * Hand the callback to the configured class, or announce it as an event.
+     *
+     * @param string $route
+     * @param string $gateway
+     * @param array $webhook
+     * @param Request $request
+     * @return void
+     */
+    protected function dispatchCallback(string $route, string $gateway, array $webhook, Request $request): void
+    {
+        $handlerClass = $webhook['class'] ?? null;
+        $handlerMethod = $webhook['handle'] ?? 'handle';
+
+        if($handlerClass && class_exists($handlerClass) && method_exists($handlerClass, $handlerMethod)) {
+            $this->callEventHook($handlerClass, $handlerMethod, $request);
+            return;
+        }
+
+        WebhookReceived::dispatch(
+            $route,
+            $gateway,
+            $request->all(),
+            $request->headers->all()
+        );
     }
 
     public function loadConfig()
     {
         return config("swissecho");
+    }
+
+    private function validateSecret(string $key, ?string $routeWebhookSecret): bool
+    {
+        return $routeWebhookSecret !== null && hash_equals($routeWebhookSecret, $key);
     }
 
     protected function callEventHook($routeWehookClass, $routeWebhookHandle, $request): void
