@@ -1,6 +1,7 @@
 {
     "name": "tekkenking/swissecho",
-    "description": "A multigateway laravel SMS notification channel package",
+    "description": "One fluent Laravel API for SMS, voice, WhatsApp, Slack and Telegram. Switch gateways per request, route by recipient country, and mock sends in development.",
+    "keywords": ["laravel", "php", "sms", "voice", "whatsapp", "slack", "telegram", "notifications", "notification-channel", "otp", "multi-gateway"],
     "type": "library",
     "license": "MIT",
     "autoload": {
