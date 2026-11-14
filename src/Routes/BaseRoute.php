@@ -364,6 +364,15 @@ abstract class BaseRoute
             throw new SwissechoException('Notification: Invalid phone number');
         }
 
+        //Validated here with the recipient, because the gateway constructors
+        //assign the body straight to a non-nullable string property: a
+        //message with no body gave 'Undefined array key "message"' and then
+        //a TypeError, which is an Error and so escapes catch(Exception).
+        //Slack and Telegram already raise a clear exception for this.
+        if(trim((string) ($this->msgBuilder->message ?? '')) === '') {
+            throw new SwissechoException('Notification: a message body is required. Set one with ->content() or ->line().');
+        }
+
         $phonecode = $this->placeConfig['phonecode'] ?? null;
 
         //setGatewayFromPlace() validates the place's gateway key; this one

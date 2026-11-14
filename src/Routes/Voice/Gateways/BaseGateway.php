@@ -3,12 +3,18 @@
 
 namespace Tekkenking\Swissecho\Routes\Voice\Gateways;
 
+use Tekkenking\Swissecho\SendsPerRecipient;
 use Tekkenking\Swissecho\SwissechoGatewayTrait;
 use Tekkenking\Swissecho\SwissechoMessage;
 
 abstract class BaseGateway
 {
-    use SwissechoGatewayTrait;
+    //SendsPerRecipient::boot() replaces the single-request boot() in
+    //SwissechoGatewayTrait, because this provider takes one recipient per
+    //request.
+    use SwissechoGatewayTrait, SendsPerRecipient {
+        SendsPerRecipient::boot insteadof SwissechoGatewayTrait;
+    }
 
     /**
      * @return mixed
@@ -28,9 +34,10 @@ abstract class BaseGateway
         $this->payload  = $this->msgBuilder->get();
         $this->config   = $gateway_config;
 
-        //For the voice class
-        $to = $this->payload['to'] ?? null;
-        $this->to = (string) (is_array($to) ? reset($to) : $to);
+        //The whole list. SendsPerRecipient::boot() narrows $this->to to one
+        //number per request; taking reset() here meant every recipient after
+        //the first was dropped silently while the event reported them all.
+        $this->to = $this->payload['to'] ?? null;
 
         $this->sender = (string) ($this->payload['sender'] ?? '');
 
